@@ -42,7 +42,9 @@ function PluginPicker.rows(ctx)
             end
         end
     end
-    table.sort(rows, function(a, b) return a.label:lower() < b.label:lower() end)
+    table.sort(rows, function(a, b)
+        return a.label:lower() < b.label:lower()
+    end)
     return rows
 end
 
@@ -64,7 +66,9 @@ function PluginPicker.pick(ctx, done)
     Dialogs.list({
         title = _("Add plugin"),
         items = items,
-        on_close = function() if not chosen then done(nil) end end,
+        on_close = function()
+            if not chosen then done(nil) end
+        end,
     })
 end
 

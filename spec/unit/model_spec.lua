@@ -1,7 +1,11 @@
 local model = require("minimenu/model")
 
-local function item(id, kind, data) return { id = id, kind = kind or "x", data = data or {} } end
-local function folder(id, items) return { id = id, kind = "folder", data = { items = items or {} } } end
+local function item(id, kind, data)
+    return { id = id, kind = kind or "x", data = data or {} }
+end
+local function folder(id, items)
+    return { id = id, kind = "folder", data = { items = items or {} } }
+end
 
 -- A chain of `depth` nested folders; returns root list and innermost folder.
 local function deepTree(depth)
@@ -105,22 +109,32 @@ describe("model", function()
 
     it("cloneItem gives fresh ids to every descendant", function()
         local n = 100
-        local issue = function() n = n + 1; return "i" .. n end
+        local issue = function()
+            n = n + 1
+            return "i" .. n
+        end
         local src = folder("f", { item("x"), folder("g", { item("y") }) })
         local copy = model.cloneItem(src, issue)
         assert.equal("i101", copy.id)
         local ids = {}
-        model.walk(copy.data.items, function(it) table.insert(ids, it.id) end)
+        model.walk(copy.data.items, function(it)
+            table.insert(ids, it.id)
+        end)
         assert.same({ "i102", "i103", "i104" }, ids)
         assert.equal("f", src.id)
     end)
 
     it("detects link cycles", function()
-        local data = { menus = {
-            m1 = { id = "m1", items = { { id = "i1", kind = "menu_link", data = { menu = "m2" } } } },
-            m2 = { id = "m2", items = { folder("i2", { { id = "i3", kind = "menu_link", data = { menu = "m3" } } }) } },
-            m3 = { id = "m3", items = {} },
-        } }
+        local data = {
+            menus = {
+                m1 = { id = "m1", items = { { id = "i1", kind = "menu_link", data = { menu = "m2" } } } },
+                m2 = {
+                    id = "m2",
+                    items = { folder("i2", { { id = "i3", kind = "menu_link", data = { menu = "m3" } } }) },
+                },
+                m3 = { id = "m3", items = {} },
+            },
+        }
         assert.is_true(model.linkCreatesCycle(data, "m3", "m1", "menu_link"))
         assert.is_false(model.linkCreatesCycle(data, "m1", "m3", "menu_link"))
         assert.is_true(model.linkCreatesCycle(data, "m1", "m1", "menu_link"))
@@ -128,8 +142,20 @@ describe("model", function()
 
     describe("sanitize", function()
         local kinds = function(name)
-            if name == "good" then return { validate = function(d) return d.ok == true end } end
-            if name == "folder" then return { validate = function(d) return type(d.items) == "table" end } end
+            if name == "good" then
+                return {
+                    validate = function(d)
+                        return d.ok == true
+                    end,
+                }
+            end
+            if name == "folder" then
+                return {
+                    validate = function(d)
+                        return type(d.items) == "table"
+                    end,
+                }
+            end
         end
 
         it("turns garbage into an empty store", function()
@@ -139,36 +165,55 @@ describe("model", function()
         end)
 
         it("does not mutate its input", function()
-            local input = { version = 1, next_id = 1, menu_order = { "m9" }, menus = {
-                m1 = { id = "m1", title = "A", items = { { id = 3 } } },
-            } }
+            local input = {
+                version = 1,
+                next_id = 1,
+                menu_order = { "m9" },
+                menus = {
+                    m1 = { id = "m1", title = "A", items = { { id = 3 } } },
+                },
+            }
             local before = model.deepcopy(input)
             model.sanitize(input, kinds)
             assert.same(before, input)
         end)
 
         it("is unchanged on a clean store", function()
-            local input = { version = 1, next_id = 5, menu_order = { "m1" }, menus = {
-                m1 = { id = "m1", title = "A", items = { { id = "i2", kind = "good", data = { ok = true } } } },
-            } }
+            local input = {
+                version = 1,
+                next_id = 5,
+                menu_order = { "m1" },
+                menus = {
+                    m1 = { id = "m1", title = "A", items = { { id = "i2", kind = "good", data = { ok = true } } } },
+                },
+            }
             local clean, changed = model.sanitize(input, kinds)
             assert.is_false(changed)
             assert.same(input, clean)
         end)
 
         it("drops bad items and menus, fixes order", function()
-            local input = { version = 1, next_id = 1, menu_order = { "m9", "m1", "m1" }, menus = {
-                m1 = { id = "m1", title = "A", items = {
-                    { id = "i2", kind = "good", data = { ok = true } },
-                    { id = "i3", kind = "good", data = { ok = false } }, -- fails validate
-                    { kind = "good", data = { ok = true } },             -- no id
-                    { id = "i4" },                                       -- no kind
-                    "junk",
-                } },
-                m2 = { id = "m2", title = "B", items = {} },             -- not in order
-                m3 = { title = "no id" },
-                m5 = { id = "m6", title = "key mismatch" },
-            } }
+            local input = {
+                version = 1,
+                next_id = 1,
+                menu_order = { "m9", "m1", "m1" },
+                menus = {
+                    m1 = {
+                        id = "m1",
+                        title = "A",
+                        items = {
+                            { id = "i2", kind = "good", data = { ok = true } },
+                            { id = "i3", kind = "good", data = { ok = false } }, -- fails validate
+                            { kind = "good", data = { ok = true } }, -- no id
+                            { id = "i4" }, -- no kind
+                            "junk",
+                        },
+                    },
+                    m2 = { id = "m2", title = "B", items = {} }, -- not in order
+                    m3 = { title = "no id" },
+                    m5 = { id = "m6", title = "key mismatch" },
+                },
+            }
             local clean, changed = model.sanitize(input, kinds)
             assert.is_true(changed)
             assert.same({ "m1", "m2" }, clean.menu_order)
@@ -180,9 +225,14 @@ describe("model", function()
 
         it("keeps items of unregistered kinds untouched", function()
             local orphan = { id = "i2", kind = "live_panel", data = { anything = { deep = true } }, extra = 1 }
-            local input = { version = 1, next_id = 3, menu_order = { "m1" }, menus = {
-                m1 = { id = "m1", title = "A", items = { orphan } },
-            } }
+            local input = {
+                version = 1,
+                next_id = 3,
+                menu_order = { "m1" },
+                menus = {
+                    m1 = { id = "m1", title = "A", items = { orphan } },
+                },
+            }
             local clean = model.sanitize(input, kinds)
             assert.same(orphan, clean.menus.m1.items[1])
         end)
@@ -190,9 +240,14 @@ describe("model", function()
         it("recurses into deep folders and validates there", function()
             local root, inner = deepTree(40)
             table.insert(inner.data.items, { id = "i900", kind = "good", data = { ok = false } })
-            local input = { version = 1, next_id = 1, menu_order = { "m1" }, menus = {
-                m1 = { id = "m1", title = "A", items = root },
-            } }
+            local input = {
+                version = 1,
+                next_id = 1,
+                menu_order = { "m1" },
+                menus = {
+                    m1 = { id = "m1", title = "A", items = root },
+                },
+            }
             local clean, changed = model.sanitize(input, kinds)
             assert.is_true(changed)
             assert.is_nil(model.find(clean.menus.m1.items, "i900"))
@@ -200,10 +255,15 @@ describe("model", function()
         end)
 
         it("repairs duplicate ids and next_id", function()
-            local input = { version = 1, next_id = 2, menu_order = { "m1", "m7" }, menus = {
-                m1 = { id = "m1", title = "A", items = { item("i5"), folder("i6", { item("i5") }) } },
-                m7 = { id = "m7", title = "B", items = { item("i6") } },
-            } }
+            local input = {
+                version = 1,
+                next_id = 2,
+                menu_order = { "m1", "m7" },
+                menus = {
+                    m1 = { id = "m1", title = "A", items = { item("i5"), folder("i6", { item("i5") }) } },
+                    m7 = { id = "m7", title = "B", items = { item("i6") } },
+                },
+            }
             local clean, changed = model.sanitize(input, kinds)
             assert.is_true(changed)
             local ids, seen = {}, {}

@@ -23,7 +23,9 @@ Capture.TAB_NAMES = {
 
 local function copyPath(path, extra)
     local out = {}
-    for i, seg in ipairs(path) do out[i] = { id = seg.id, text = seg.text } end
+    for i, seg in ipairs(path) do
+        out[i] = { id = seg.id, text = seg.text }
+    end
     if extra then table.insert(out, { id = extra.id, text = extra.text }) end
     return out
 end
@@ -97,8 +99,10 @@ function Capture.pick(ctx, done)
                         enter(row)
                     elseif row.leaf then
                         local icon = select(1, Util.splitLeadingIcon(row.text))
-                        finish({ path = copyPath(level.path, row.segment), page = false,
-                            captured_in = captured_in }, icon)
+                        finish(
+                            { path = copyPath(level.path, row.segment), page = false, captured_in = captured_in },
+                            icon
+                        )
                     else
                         Dialogs.info(_("This entry can't be added."))
                     end
@@ -106,7 +110,9 @@ function Capture.pick(ctx, done)
             })
         end
         local crumbs = {}
-        for i = 2, #stack do table.insert(crumbs, stack[i].title) end
+        for i = 2, #stack do
+            table.insert(crumbs, stack[i].title)
+        end
         local title = #crumbs > 0 and table.concat(crumbs, " \u{203A} ") or root_title
         if not menu then
             menu = Dialogs.list({
@@ -118,7 +124,9 @@ function Capture.pick(ctx, done)
                         show()
                     end
                 end,
-                on_close = function() if not chosen then done(nil) end end,
+                on_close = function()
+                    if not chosen then done(nil) end
+                end,
             })
         end
         Dialogs.relist(menu, title, items, #stack - 1)

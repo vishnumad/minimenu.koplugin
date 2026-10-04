@@ -64,7 +64,7 @@ function API.open(menu_id, opts)
     if API.isOpen() then API.close() end
     local UIManager = require("ui/uimanager")
     local Popup = require("minimenu/ui/popup")
-    local popup = Popup:new{ menu_id = menu_id, open_opts = opts or {} }
+    local popup = Popup:new { menu_id = menu_id, open_opts = opts or {} }
     API.current = popup
     UIManager:show(popup, "ui", popup:showRect())
     return true

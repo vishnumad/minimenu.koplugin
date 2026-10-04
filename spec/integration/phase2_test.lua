@@ -3,9 +3,15 @@ local Store, API, test, eq = H.Store, H.API, H.test, H.eq
 local model = require("minimenu/model")
 local ItemDialog = require("minimenu/ui/item_dialog")
 
-local function act(name) return { id = Store.issueItemId(), kind = "dispatcher", data = { action = { [name] = true } } } end
-local function folder(label, items) return { id = Store.issueItemId(), kind = "folder", label = label, data = { items = items or {} } } end
-local function top() return H.UIManager._window_stack[#H.UIManager._window_stack].widget end
+local function act(name)
+    return { id = Store.issueItemId(), kind = "dispatcher", data = { action = { [name] = true } } }
+end
+local function folder(label, items)
+    return { id = Store.issueItemId(), kind = "folder", label = label, data = { items = items or {} } }
+end
+local function top()
+    return H.UIManager._window_stack[#H.UIManager._window_stack].widget
+end
 
 local inner = folder("Inner", { act("screenshot"), act("full_refresh") })
 local tools = folder("Tools", { act("night_mode"), inner, act("toggle_wifi") })
@@ -23,7 +29,9 @@ H.fm()
 local function buttonTexts(dialog)
     local texts = {}
     for _, row in ipairs(dialog.buttons) do
-        for _, b in ipairs(row) do table.insert(texts, b.text) end
+        for _, b in ipairs(row) do
+            table.insert(texts, b.text)
+        end
     end
     return texts
 end
@@ -31,7 +39,11 @@ end
 local function press(dialog, id, hold)
     local b = assert(dialog:getButtonById(id), "button " .. id)
     local d = b.dimen
-    if hold then H.hold(d.x + d.w / 2, d.y + d.h / 2) else H.tap(d.x + d.w / 2, d.y + d.h / 2) end
+    if hold then
+        H.hold(d.x + d.w / 2, d.y + d.h / 2)
+    else
+        H.tap(d.x + d.w / 2, d.y + d.h / 2)
+    end
     H.drain()
 end
 
@@ -41,8 +53,15 @@ test("long-press on a root row opens the item dialog", function()
     H.hold(H.rowCenter(1, 1))
     assert(ItemDialog.current and top() == ItemDialog.current, "item dialog on top")
     assert(not H.popup().closed, "popup stays open underneath")
-    eq({ "Rename…", "Change icon…", "Show in: Reader and File browser", "Move…", "Add item after…",
-        "Duplicate", "Delete" }, buttonTexts(ItemDialog.current))
+    eq({
+        "Rename…",
+        "Change icon…",
+        "Show in: Reader and File browser",
+        "Move…",
+        "Add item after…",
+        "Duplicate",
+        "Delete",
+    }, buttonTexts(ItemDialog.current))
     H.shot("p2_item_dialog")
     H.UIManager:close(ItemDialog.current)
     H.drain()
@@ -79,7 +98,10 @@ end)
 
 test("Move… closes when its item is deleted", function()
     local extra = act("history")
-    Store.editItems(m.id, function(items) table.insert(items, extra) return true end)
+    Store.editItems(m.id, function(items)
+        table.insert(items, extra)
+        return true
+    end)
     local mover = assert(ItemDialog.showMove(m.id, extra.id))
     H.drain()
     eq(mover, top())
@@ -135,7 +157,9 @@ test("an edit that removes the opening row closes deeper flyouts", function()
     H.tap(H.rowCenter(2, H.rowIndex(2, "Inner")))
     eq(3, #p.chain)
     -- move Inner out of Tools: level 2 no longer contains it
-    Store.editItems(m.id, function(items) return model.moveOut(items, inner.id) end)
+    Store.editItems(m.id, function(items)
+        return model.moveOut(items, inner.id)
+    end)
     H.drain()
     eq(2, #p.chain)
     eq(nil, p.chain[2].open_index)
@@ -172,16 +196,25 @@ test("Move to… lists folders except the item's own subtree", function()
     H.drain()
     local dlg = top()
     local texts = {}
-    for _, row in ipairs(dlg.buttons) do table.insert(texts, row[1].text) end
+    for _, row in ipairs(dlg.buttons) do
+        table.insert(texts, row[1].text)
+    end
     -- Tools is at top level; Inner was moved to top level in an earlier test.
-    for _, t in ipairs(texts) do assert(not t:find("Tools"), "Tools must not be a target of itself") end
+    for _, t in ipairs(texts) do
+        assert(not t:find("Tools"), "Tools must not be a target of itself")
+    end
     assert(texts[1]:find("Top level"), "top level listed")
     H.UIManager:close(dlg)
     H.drain()
     -- model refuses a descendant move outright
     local sub = folder("Sub")
-    Store.editItems(m.id, function() table.insert(tools.data.items, sub) return true end)
-    local ok, why = Store.editItems(m.id, function(items) return model.moveTo(items, tools.id, sub.id) end)
+    Store.editItems(m.id, function()
+        table.insert(tools.data.items, sub)
+        return true
+    end)
+    local ok, why = Store.editItems(m.id, function(items)
+        return model.moveTo(items, tools.id, sub.id)
+    end)
     eq(false, ok)
     eq("descendant", why)
 end)
@@ -236,7 +269,9 @@ end)
 test("paging: a long menu pages and swipes turn pages", function()
     local long = Store.createMenu("Long")
     Store.editItems(long.id, function(items)
-        for _ = 1, 30 do table.insert(items, act("history")) end
+        for _ = 1, 30 do
+            table.insert(items, act("history"))
+        end
         return true
     end)
     API.open(long.id)
@@ -258,11 +293,16 @@ test("editor lists items with markers and drills into folders", function()
     local list = Editor.showItems(m.id)
     H.drain()
     local texts = {}
-    for _, it in ipairs(list.item_table) do table.insert(texts, it.text) end
+    for _, it in ipairs(list.item_table) do
+        table.insert(texts, it.text)
+    end
     assert(texts[#texts]:find("Add item"), "add row last")
     -- open Tools
     for _, it in ipairs(list.item_table) do
-        if it.text:find("Tools") then it.callback(list) break end
+        if it.text:find("Tools") then
+            it.callback(list)
+            break
+        end
     end
     H.drain()
     eq("Edit me \u{203A} Tools", list.title_bar.title_widget.text)
@@ -292,7 +332,9 @@ test("main menu entry is registered under Tools", function()
     local sub = assert(Walk.children(node))
     eq("New menu…", sub[1].text)
     local names = {}
-    for i = 2, #sub - 1 do table.insert(names, sub[i].text_func()) end
+    for i = 2, #sub - 1 do
+        table.insert(names, sub[i].text_func())
+    end
     assert(#names >= 1)
 end)
 

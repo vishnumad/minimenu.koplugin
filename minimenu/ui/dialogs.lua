@@ -7,27 +7,31 @@ local Dialogs = {}
 function Dialogs.input(args, callback)
     local InputDialog = require("ui/widget/inputdialog")
     local dialog
-    dialog = InputDialog:new{
+    dialog = InputDialog:new {
         title = args.title,
         input = args.input or "",
         input_hint = args.hint,
         description = args.description,
-        buttons = { {
+        buttons = {
             {
-                text = _("Cancel"),
-                id = "close",
-                callback = function() UIManager:close(dialog) end,
+                {
+                    text = _("Cancel"),
+                    id = "close",
+                    callback = function()
+                        UIManager:close(dialog)
+                    end,
+                },
+                {
+                    text = args.ok_text or _("Save"),
+                    is_enter_default = true,
+                    callback = function()
+                        local text = dialog:getInputText()
+                        UIManager:close(dialog)
+                        callback(text)
+                    end,
+                },
             },
-            {
-                text = args.ok_text or _("Save"),
-                is_enter_default = true,
-                callback = function()
-                    local text = dialog:getInputText()
-                    UIManager:close(dialog)
-                    callback(text)
-                end,
-            },
-        } },
+        },
     }
     UIManager:show(dialog)
     dialog:onShowKeyboard()
@@ -36,7 +40,7 @@ end
 
 function Dialogs.confirm(text, ok_text, callback)
     local ConfirmBox = require("ui/widget/confirmbox")
-    UIManager:show(ConfirmBox:new{
+    UIManager:show(ConfirmBox:new {
         text = text,
         ok_text = ok_text,
         ok_callback = callback,
@@ -45,7 +49,7 @@ end
 
 function Dialogs.info(text, timeout)
     local InfoMessage = require("ui/widget/infomessage")
-    UIManager:show(InfoMessage:new{ text = text, timeout = timeout })
+    UIManager:show(InfoMessage:new { text = text, timeout = timeout })
 end
 
 --[[--
@@ -87,7 +91,7 @@ function Dialogs.choose(args, callback)
         end
         table.insert(buttons, r)
     end
-    dialog = ButtonDialog:new{
+    dialog = ButtonDialog:new {
         title = args.title,
         title_align = "center",
         buttons = buttons,
@@ -112,7 +116,7 @@ function Dialogs.list(args)
     local Menu = require("ui/widget/menu")
     local Screen = require("device").screen
     local menu
-    menu = Menu:new{
+    menu = Menu:new {
         title = args.title,
         item_table = args.items,
         covers_fullscreen = true,
@@ -125,9 +129,9 @@ function Dialogs.list(args)
         single_line = true,
     }
     menu.paths = menu.paths or {}
-    if args.on_return then
-        menu.onReturn = function() args.on_return(menu) end
-    end
+    if args.on_return then menu.onReturn = function()
+        args.on_return(menu)
+    end end
     menu.onMenuChoice = function(_, item)
         if item.callback then item.callback(menu) end
         return true
@@ -154,7 +158,9 @@ end
 --- `depth` > 0 shows the back arrow; keep_page stays on the current page.
 function Dialogs.relist(menu, title, items, depth, keep_page)
     menu.paths = {}
-    for i = 1, depth or 0 do menu.paths[i] = true end
+    for i = 1, depth or 0 do
+        menu.paths[i] = true
+    end
     menu:switchItemTable(title, items, keep_page and -1 or nil)
 end
 

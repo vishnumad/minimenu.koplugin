@@ -21,7 +21,9 @@ return {
             icon = FOLDER_ICON,
             available = true,
             title = item.label,
-            children = function() return item.data.items end,
+            children = function()
+                return item.data.items
+            end,
         }
     end,
 

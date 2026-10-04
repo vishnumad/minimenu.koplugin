@@ -32,13 +32,20 @@ function Anchor.fixed(position, size, screen, margin)
     local left, right = margin, screen.w - margin - w
     local top, bottom = margin, screen.h - margin - h
     local x, y
-    if position == "top_left" then x, y = left, top
-    elseif position == "top_right" then x, y = right, top
-    elseif position == "bottom_left" then x, y = left, bottom
-    elseif position == "bottom_right" then x, y = right, bottom
-    elseif position == "top" then x, y = cx, top
-    elseif position == "bottom" then x, y = cx, bottom
-    else x, y = cx, cy
+    if position == "top_left" then
+        x, y = left, top
+    elseif position == "top_right" then
+        x, y = right, top
+    elseif position == "bottom_left" then
+        x, y = left, bottom
+    elseif position == "bottom_right" then
+        x, y = right, bottom
+    elseif position == "top" then
+        x, y = cx, top
+    elseif position == "bottom" then
+        x, y = cx, bottom
+    else
+        x, y = cx, cy
     end
     return Anchor.clampRect({ x = x, y = y, w = w, h = h }, screen, margin)
 end
@@ -49,8 +56,16 @@ function Anchor.atPoint(point, size, screen, margin, offset)
     offset = offset or 0
     local w, h = size.w, size.h
     local x, y
-    if point.x <= screen.w / 2 then x = point.x + offset else x = point.x - offset - w end
-    if point.y <= screen.h / 2 then y = point.y + offset else y = point.y - offset - h end
+    if point.x <= screen.w / 2 then
+        x = point.x + offset
+    else
+        x = point.x - offset - w
+    end
+    if point.y <= screen.h / 2 then
+        y = point.y + offset
+    else
+        y = point.y - offset - h
+    end
     return Anchor.clampRect({ x = x, y = y, w = w, h = h }, screen, margin)
 end
 
@@ -69,15 +84,19 @@ local function sideRect(side, rect, w, h, gap)
 end
 
 local function fits(r, screen, margin)
-    return r.x >= margin and r.y >= margin
-        and r.x + r.w <= screen.w - margin and r.y + r.h <= screen.h - margin
+    return r.x >= margin and r.y >= margin and r.x + r.w <= screen.w - margin and r.y + r.h <= screen.h - margin
 end
 
 local function room(side, rect, screen)
-    if side == "above" then return rect.y
-    elseif side == "below" then return screen.h - (rect.y + (rect.h or 0))
-    elseif side == "left" then return rect.x
-    else return screen.w - (rect.x + (rect.w or 0)) end
+    if side == "above" then
+        return rect.y
+    elseif side == "below" then
+        return screen.h - (rect.y + (rect.h or 0))
+    elseif side == "left" then
+        return rect.x
+    else
+        return screen.w - (rect.x + (rect.w or 0))
+    end
 end
 
 --- Place against a rect (a point is a 0×0 rect) on the `prefer` side, or
@@ -91,7 +110,9 @@ function Anchor.atRect(rect, prefer, size, screen, margin, gap)
         for _, s in ipairs({ "below", "above", "right", "left" }) do
             local need = (s == "above" or s == "below") and size.h or size.w
             local score = room(s, rect, screen) - need - gap
-            if best_score == nil or score > best_score then best, best_score = s, score end
+            if best_score == nil or score > best_score then
+                best, best_score = s, score
+            end
         end
         side = best
     end
@@ -115,9 +136,7 @@ Returns rect, "anchor" | "gesture" | "fixed"
 ]]
 function Anchor.placeRoot(args)
     local size, screen, margin = args.size, args.screen, args.margin or 0
-    if args.rect then
-        return Anchor.atRect(args.rect, args.prefer, size, screen, margin, args.gap or 0), "anchor"
-    end
+    if args.rect then return Anchor.atRect(args.rect, args.prefer, size, screen, margin, args.gap or 0), "anchor" end
     if args.position == "gesture" and args.point then
         return Anchor.atPoint(args.point, size, screen, margin, args.offset), "gesture"
     end

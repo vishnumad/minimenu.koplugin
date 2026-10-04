@@ -20,9 +20,7 @@ function Kinds.register(provider)
     if type(provider.name) ~= "string" or provider.name == "" then
         return false, "provider.name must be a non-empty string"
     end
-    if type(provider.resolve) ~= "function" then
-        return false, "provider.resolve must be a function"
-    end
+    if type(provider.resolve) ~= "function" then return false, "provider.resolve must be a function" end
     if Kinds.providers[provider.name] and Kinds.providers[provider.name] ~= provider then
         logWarn("replacing item kind", provider.name)
     end

@@ -21,15 +21,17 @@ Returns the TouchMenu
 function Host.show(items, opts)
     opts = opts or {}
     local TouchMenu = require("ui/widget/touchmenu")
-    local container = CenterContainer:new{
+    local container = CenterContainer:new {
         covers_header = true,
         ignore = "height",
         dimen = Screen:getSize(),
     }
     local tab = { icon = opts.icon or "appbar.menu" }
-    for i, item in ipairs(items) do tab[i] = item end
+    for i, item in ipairs(items) do
+        tab[i] = item
+    end
     tab.max_per_page = items.max_per_page
-    local menu = TouchMenu:new{
+    local menu = TouchMenu:new {
         width = Screen:getWidth(),
         tab_item_table = { tab },
         show_parent = container,

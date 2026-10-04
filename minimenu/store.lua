@@ -56,7 +56,9 @@ end
 
 function Store.memoryBackend(initial)
     local b = { stored = initial, writes = 0 }
-    b.read = function() return b.stored end
+    b.read = function()
+        return b.stored
+    end
     b.write = function(data)
         b.stored = model.deepcopy(data)
         b.writes = b.writes + 1
@@ -141,7 +143,10 @@ function Store.subscribe(fn)
     table.insert(Store.listeners, fn)
     return function()
         for i, f in ipairs(Store.listeners) do
-            if f == fn then table.remove(Store.listeners, i) return end
+            if f == fn then
+                table.remove(Store.listeners, i)
+                return
+            end
         end
     end
 end
@@ -188,7 +193,9 @@ end
 
 function Store.options(menu)
     local out = {}
-    for k in pairs(Store.DEFAULT_OPTIONS) do out[k] = Store.option(menu, k) end
+    for k in pairs(Store.DEFAULT_OPTIONS) do
+        out[k] = Store.option(menu, k)
+    end
     return out
 end
 
@@ -216,7 +223,9 @@ function Store.createMenu(title, items, fields)
         options = {},
         items = items or {},
     }
-    for k, v in pairs(fields or {}) do menu[k] = v end
+    for k, v in pairs(fields or {}) do
+        menu[k] = v
+    end
     data.menus[id] = menu
     table.insert(data.menu_order, id)
     Store.save()
@@ -239,7 +248,10 @@ function Store.deleteMenu(id)
     if not menu then return false end
     data.menus[id] = nil
     for i, mid in ipairs(data.menu_order) do
-        if mid == id then table.remove(data.menu_order, i) break end
+        if mid == id then
+            table.remove(data.menu_order, i)
+            break
+        end
     end
     Store.save()
     Store.emit({ type = "menu_deleted", menu_id = id, menu = menu })

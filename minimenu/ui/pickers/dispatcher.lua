@@ -15,7 +15,9 @@ local DispatcherPicker = {}
 function DispatcherPicker.sections(menu)
     local out = {}
     local last = menu.max_per_page or #menu
-    for i = 2, last do table.insert(out, menu[i]) end
+    for i = 2, last do
+        table.insert(out, menu[i])
+    end
     return out
 end
 

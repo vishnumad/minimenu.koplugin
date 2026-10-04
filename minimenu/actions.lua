@@ -95,7 +95,9 @@ end
 --- Subscribes once, however many plugin instances call it.
 function Actions.attach(store)
     if Actions.detach then return end
-    Actions.detach = store.subscribe(function(ev) Actions.onStoreEvent(store, ev) end)
+    Actions.detach = store.subscribe(function(ev)
+        Actions.onStoreEvent(store, ev)
+    end)
 end
 
 return Actions

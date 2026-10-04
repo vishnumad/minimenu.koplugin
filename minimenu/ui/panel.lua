@@ -21,7 +21,9 @@ args:
 ]]
 function Panel.new(args)
     local self = setmetatable({}, Panel)
-    for k, v in pairs(args) do self[k] = v end
+    for k, v in pairs(args) do
+        self[k] = v
+    end
     self.page = self.page or 1
     self.views = {}
     self:computeColumns()
@@ -73,7 +75,9 @@ function Panel:measure(max_h)
     end
     if self.page > #self.pages then self.page = #self.pages end
     local content_h = 0
-    for _, p in ipairs(self.pages) do content_h = math.max(content_h, p.h) end
+    for _, p in ipairs(self.pages) do
+        content_h = math.max(content_h, p.h)
+    end
     local h = chrome + content_h + (#self.pages > 1 and cfg.pager_h or 0)
 
     local natural = 0
@@ -92,12 +96,22 @@ function Panel:measure(max_h)
 end
 
 function Panel:freeViews()
-    for _, v in pairs(self.views) do RowView.free(v) end
+    for _, v in pairs(self.views) do
+        RowView.free(v)
+    end
     self.views = {}
-    if self.title_view then self.title_view:free(); self.title_view = nil end
-    if self.back_view then self.back_view:free(); self.back_view = nil end
+    if self.title_view then
+        self.title_view:free()
+        self.title_view = nil
+    end
+    if self.back_view then
+        self.back_view:free()
+        self.back_view = nil
+    end
     if self.pager_views then
-        for _, v in pairs(self.pager_views) do v:free() end
+        for _, v in pairs(self.pager_views) do
+            v:free()
+        end
         self.pager_views = nil
     end
 end
@@ -117,10 +131,15 @@ function Panel:layout(x, y, w, h)
             self.back_view = RowView.textWidget(BACK, cfg.chevron_face)
             local back_w = cfg.icon_col
             self.title_view = RowView.textWidget(self.header, cfg.title_face, {
-                bold = true, max_width = inner_w - 2 * cfg.pad - back_w, truncate_left = true })
+                bold = true,
+                max_width = inner_w - 2 * cfg.pad - back_w,
+                truncate_left = true,
+            })
         else
             self.title_view = RowView.textWidget(self.title, cfg.title_face, {
-                bold = true, max_width = inner_w - 2 * cfg.pad })
+                bold = true,
+                max_width = inner_w - 2 * cfg.pad,
+            })
         end
         cy = cy + cfg.title_h
     end
@@ -138,9 +157,16 @@ function Panel:layout(x, y, w, h)
         self.pager_rect = { x = inner_x, y = y + h - cfg.border - cfg.pager_h, w = inner_w, h = cfg.pager_h }
         local dim = Blitbuffer.COLOR_DARK_GRAY
         self.pager_views = {
-            prev = RowView.textWidget(BACK, cfg.chevron_face, { fgcolor = self.page > 1 and Blitbuffer.COLOR_BLACK or dim }),
-            next = RowView.textWidget(RowView.CHEVRON, cfg.chevron_face,
-                { fgcolor = self.page < #self.pages and Blitbuffer.COLOR_BLACK or dim }),
+            prev = RowView.textWidget(
+                BACK,
+                cfg.chevron_face,
+                { fgcolor = self.page > 1 and Blitbuffer.COLOR_BLACK or dim }
+            ),
+            next = RowView.textWidget(
+                RowView.CHEVRON,
+                cfg.chevron_face,
+                { fgcolor = self.page < #self.pages and Blitbuffer.COLOR_BLACK or dim }
+            ),
             label = RowView.textWidget(("%d / %d"):format(self.page, #self.pages), cfg.face),
         }
     end

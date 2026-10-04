@@ -26,6 +26,11 @@ function H.setup()
         os.execute(("cp --update=none spec/front/unit/data/%s %q"):format(f, HOME .. "/books/"))
     end
     G_reader_settings:saveSetting("extra_plugin_paths", { HOME .. "/plugins" })
+    local disabled = {}
+    for name in (os.getenv("KO_PLUGINS_DISABLED") or ""):gmatch("[^,%s]+") do
+        disabled[name] = true
+    end
+    G_reader_settings:saveSetting("plugins_disabled", disabled)
     local PluginLoader = require("pluginloader")
     PluginLoader.enabled_plugins = nil
     PluginLoader:loadPlugins()
@@ -54,16 +59,20 @@ function H.firstInstall()
     H.API.ensure()
 end
 
-function H.books(name) return HOME .. "/books/" .. name end
+function H.books(name)
+    return HOME .. "/books/" .. name
+end
 
 function H.drain(n)
-    for _ = 1, n or 3 do fastforward_ui_events() end
+    for _ = 1, n or 3 do
+        fastforward_ui_events()
+    end
 end
 
 function H.fm()
     local FileManager = require("apps/filemanager/filemanager")
     if FileManager.instance then return FileManager.instance end
-    local fm = FileManager:new{ dimen = H.Screen:getSize(), root_path = HOME .. "/books" }
+    local fm = FileManager:new { dimen = H.Screen:getSize(), root_path = HOME .. "/books" }
     H.UIManager:show(fm)
     H.drain()
     return fm
@@ -81,8 +90,11 @@ function H.reader(file)
     local ReaderUI = require("apps/reader/readerui")
     local DocumentRegistry = require("document/documentregistry")
     H.closeFM()
-    if ReaderUI.instance then ReaderUI.instance:onClose(); H.drain() end
-    local reader = ReaderUI:new{
+    if ReaderUI.instance then
+        ReaderUI.instance:onClose()
+        H.drain()
+    end
+    local reader = ReaderUI:new {
         dimen = H.Screen:getSize(),
         document = DocumentRegistry:openDocument(H.books(file)),
     }
@@ -100,8 +112,10 @@ function H.closeReader()
 end
 
 local function gesture(kind, x, y, extra)
-    local ges = { ges = kind, pos = H.Geom:new{ x = x, y = y, w = 0, h = 0 }, time = require("ui/time").now() }
-    for k, v in pairs(extra or {}) do ges[k] = v end
+    local ges = { ges = kind, pos = H.Geom:new { x = x, y = y, w = 0, h = 0 }, time = require("ui/time").now() }
+    for k, v in pairs(extra or {}) do
+        ges[k] = v
+    end
     return ges
 end
 H.gesture = gesture
@@ -141,7 +155,9 @@ function H.top()
     return H.UIManager:getTopmostVisibleWidget() or H.UIManager._window_stack[#H.UIManager._window_stack].widget
 end
 
-function H.popup() return H.API.current end
+function H.popup()
+    return H.API.current
+end
 
 --- Center of row `i` in panel `k` of the open popup.
 function H.rowCenter(k, i)
@@ -153,8 +169,12 @@ end
 function H.rowLabels(k)
     local out = {}
     for _, row in ipairs(H.popup().chain[k].panel.rows) do
-        table.insert(out, row.separator and "--" or row.placeholder and ("<" .. row.label .. ">")
-            or (row.dim and ("(" .. row.label .. ")") or row.label))
+        table.insert(
+            out,
+            row.separator and "--"
+            or row.placeholder and ("<" .. row.label .. ">")
+            or (row.dim and ("(" .. row.label .. ")") or row.label)
+        )
     end
     return out
 end
@@ -188,7 +208,9 @@ function H.eq(expected, actual, msg)
     local function ser(v)
         if type(v) ~= "table" then return tostring(v) end
         local parts = {}
-        for i, x in ipairs(v) do parts[i] = ser(x) end
+        for i, x in ipairs(v) do
+            parts[i] = ser(x)
+        end
         return "{" .. table.concat(parts, ", ") .. "}"
     end
     if ser(expected) ~= ser(actual) then

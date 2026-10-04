@@ -14,8 +14,8 @@ local model = require("minimenu/model")
 local ItemDialog = {}
 
 ItemDialog.SCOPES = {
-    { value = nil,           text = _("Reader and File browser") },
-    { value = "reader",      text = _("Reader") },
+    { value = nil, text = _("Reader and File browser") },
+    { value = "reader", text = _("Reader") },
     { value = "filemanager", text = _("File browser") },
 }
 
@@ -82,7 +82,9 @@ function ItemDialog.delete(menu_id, item_id)
     local m, item = locate(menu_id, item_id)
     if not m then return end
     local function doit()
-        Store.editItems(m.id, function(items) return model.remove(items, item_id) ~= nil end)
+        Store.editItems(m.id, function(items)
+            return model.remove(items, item_id) ~= nil
+        end)
     end
     local kids = model.children(item)
     if kids and #kids > 0 then
@@ -118,8 +120,10 @@ function ItemDialog.chooseScope(menu_id, item_id)
     local choices = {}
     for _i, s in ipairs(ItemDialog.SCOPES) do
         -- false stands in for nil, which choose can't pass through.
-        table.insert(choices,
-            { text = (item.scope == s.value and "\u{2713} " or "    ") .. s.text, value = s.value or false })
+        table.insert(
+            choices,
+            { text = (item.scope == s.value and "\u{2713} " or "    ") .. s.text, value = s.value or false }
+        )
     end
     Dialogs.choose({ title = _("Show in"), choices = choices }, function(scope)
         local m, it = locate(menu_id, item_id)
@@ -152,7 +156,9 @@ local function retitle(dialog, text)
         dialog.title = text
         box:setText(text)
         if box:getSize().h == h then
-            UIManager:setDirty(dialog, function() return "ui", dialog.movable.dimen end)
+            UIManager:setDirty(dialog, function()
+                return "ui", dialog.movable.dimen
+            end)
             return
         end
     end
@@ -189,7 +195,9 @@ function ItemDialog.showMove(menu_id, item_id, ctx)
         return function()
             local _item, list, index = position()
             if not index then return end
-            Store.editItems(menu_id, function(items) return model.move(items, item_id, delta_fn(index, #list)) end)
+            Store.editItems(menu_id, function(items)
+                return model.move(items, item_id, delta_fn(index, #list))
+            end)
         end
     end
     local function canMove(dir)
@@ -212,15 +220,23 @@ function ItemDialog.showMove(menu_id, item_id, ctx)
                     id = "up",
                     text = "\u{25B2}  " .. _("Up"),
                     enabled_func = canMove(-1),
-                    callback = move(function() return -1 end),
-                    hold_callback = move(function(index) return 1 - index end),
+                    callback = move(function()
+                        return -1
+                    end),
+                    hold_callback = move(function(index)
+                        return 1 - index
+                    end),
                 },
                 {
                     id = "down",
                     text = "\u{25BC}  " .. _("Down"),
                     enabled_func = canMove(1),
-                    callback = move(function() return 1 end),
-                    hold_callback = move(function(index, n) return n - index end),
+                    callback = move(function()
+                        return 1
+                    end),
+                    hold_callback = move(function(index, n)
+                        return n - index
+                    end),
                 },
             },
             {
@@ -244,7 +260,9 @@ function ItemDialog.showMove(menu_id, item_id, ctx)
                         return item ~= nil and folder ~= nil
                     end,
                     callback = function()
-                        Store.editItems(menu_id, function(items) return model.moveOut(items, item_id) end)
+                        Store.editItems(menu_id, function(items)
+                            return model.moveOut(items, item_id)
+                        end)
                     end,
                 },
             },
@@ -252,7 +270,9 @@ function ItemDialog.showMove(menu_id, item_id, ctx)
                 {
                     id = "done",
                     text = _("Done"),
-                    callback = function() UIManager:close(dialog) end,
+                    callback = function()
+                        UIManager:close(dialog)
+                    end,
                 },
             },
         },
@@ -292,22 +312,32 @@ function ItemDialog.show(menu_id, item_id, ctx)
     local dialog
     local buttons = {}
     local function add(text, fn)
-        table.insert(buttons, { {
-            text = text,
-            align = "left",
-            callback = function()
-                UIManager:close(dialog)
-                fn()
-            end,
-        } })
+        table.insert(buttons, {
+            {
+                text = text,
+                align = "left",
+                callback = function()
+                    UIManager:close(dialog)
+                    fn()
+                end,
+            },
+        })
     end
 
     if not info.separator then
-        add(_("Rename…"), function() ItemDialog.rename(menu_id, item_id, ctx) end)
-        add(_("Change icon…"), function() ItemDialog.changeIcon(menu_id, item_id) end)
+        add(_("Rename…"), function()
+            ItemDialog.rename(menu_id, item_id, ctx)
+        end)
+        add(_("Change icon…"), function()
+            ItemDialog.changeIcon(menu_id, item_id)
+        end)
     end
-    add(T(_("Show in: %1"), scopeName(item.scope)), function() ItemDialog.chooseScope(menu_id, item_id) end)
-    add(_("Move…"), function() ItemDialog.showMove(menu_id, item_id, ctx) end)
+    add(T(_("Show in: %1"), scopeName(item.scope)), function()
+        ItemDialog.chooseScope(menu_id, item_id)
+    end)
+    add(_("Move…"), function()
+        ItemDialog.showMove(menu_id, item_id, ctx)
+    end)
     if model.children(item) then
         add(_("Add item inside…"), function()
             require("minimenu/ui/pickers/kinds").add({ menu_id = menu_id, folder_id = item_id, ctx = ctx })
@@ -320,8 +350,12 @@ function ItemDialog.show(menu_id, item_id, ctx)
     add(_("Add item after…"), function()
         require("minimenu/ui/pickers/kinds").add({ menu_id = menu_id, after_id = item_id, ctx = ctx })
     end)
-    add(_("Duplicate"), function() ItemDialog.duplicate(menu_id, item_id) end)
-    add(_("Delete"), function() ItemDialog.delete(menu_id, item_id) end)
+    add(_("Duplicate"), function()
+        ItemDialog.duplicate(menu_id, item_id)
+    end)
+    add(_("Delete"), function()
+        ItemDialog.delete(menu_id, item_id)
+    end)
 
     dialog = ButtonDialog:new {
         title = title,

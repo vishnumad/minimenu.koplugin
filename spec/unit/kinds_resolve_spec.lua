@@ -19,33 +19,78 @@ local fakeDispatcher = {
         -- mirrors KOReader's Dispatcher:isActionEnabled
         local disabled = true
         if action and (action.condition == nil or action.condition == true) then
-            if current.sub == "paging" then disabled = action.rolling
-            elseif current.sub == "rolling" then disabled = action.paging
-            else disabled = action.reader or action.rolling or action.paging end
+            if current.sub == "paging" then
+                disabled = action.rolling
+            elseif current.sub == "rolling" then
+                disabled = action.paging
+            else
+                disabled = action.reader or action.rolling or action.paging
+            end
         end
         return not disabled
     end,
-    getNameFromItem = function(_, name) return list[name] and list[name].title or "Unknown item" end,
-    menuTextFunc = function(_, action) local n = 0 for k in pairs(action) do if k ~= "settings" then n = n + 1 end end return n .. " actions" end,
-    execute = function(_, action) table.insert(executed, action) end,
+    getNameFromItem = function(_, name)
+        return list[name] and list[name].title or "Unknown item"
+    end,
+    menuTextFunc = function(_, action)
+        local n = 0
+        for k in pairs(action) do
+            if k ~= "settings" then n = n + 1 end
+        end
+        return n .. " actions"
+    end,
+    execute = function(_, action)
+        table.insert(executed, action)
+    end,
 }
 
 local wifi = false
 local function fakeTree()
     return {
-        { id = "setting",
-            { id = "night_mode", text = "\238\128\128 Night mode", checked_func = function() return false end, callback = function() end },
-            { id = "network", text = "Network", sub_item_table = {
-                { id = "network_wifi", text = "Wi-Fi connection", checked_func = function() return wifi end,
-                  callback = function() wifi = not wifi end },
-            } },
-            { id = "off", text = "Disabled", enabled_func = function() return false end, callback = function() end },
+        {
+            id = "setting",
+            {
+                id = "night_mode",
+                text = "\238\128\128 Night mode",
+                checked_func = function()
+                    return false
+                end,
+                callback = function() end,
+            },
+            {
+                id = "network",
+                text = "Network",
+                sub_item_table = {
+                    {
+                        id = "network_wifi",
+                        text = "Wi-Fi connection",
+                        checked_func = function()
+                            return wifi
+                        end,
+                        callback = function()
+                            wifi = not wifi
+                        end,
+                    },
+                },
+            },
+            {
+                id = "off",
+                text = "Disabled",
+                enabled_func = function()
+                    return false
+                end,
+                callback = function() end,
+            },
         },
     }
 end
 local function readerTree()
     local t = fakeTree()
-    table.insert(t, 1, { id = "navi", { id = "table_of_contents", text = "Table of contents", callback = function() end } })
+    table.insert(
+        t,
+        1,
+        { id = "navi", { id = "table_of_contents", text = "Table of contents", callback = function() end } }
+    )
     return t
 end
 
@@ -53,12 +98,24 @@ local function fakeUI(kind, opts)
     opts = opts or {}
     local ui = { menu = {} }
     if opts.broken then
-        ui.menu.setUpdateItemTable = function() error("MenuSorter exploded") end
+        ui.menu.setUpdateItemTable = function()
+            error("MenuSorter exploded")
+        end
     else
         ui.menu.tab_item_table = kind == "reader" and readerTree() or fakeTree()
     end
-    ui.statistics = { addToMainMenu = function(_, mi) mi.statistics = { text = "Reading statistics", callback = function() end } end }
-    if kind == "reader" then ui.kosync = { addToMainMenu = function(_, mi) mi.progress_sync = { text = "Progress sync", sub_item_table = {} } end } end
+    ui.statistics = {
+        addToMainMenu = function(_, mi)
+            mi.statistics = { text = "Reading statistics", callback = function() end }
+        end,
+    }
+    if kind == "reader" then
+        ui.kosync = {
+            addToMainMenu = function(_, mi)
+                mi.progress_sync = { text = "Progress sync", sub_item_table = {} }
+            end,
+        }
+    end
     return ui
 end
 
@@ -78,10 +135,15 @@ describe("kinds resolve", function()
         Kinds.registerBuiltins()
         DispatchUtil.inject(fakeDispatcher, list)
     end)
-    teardown(function() DispatchUtil.inject(nil, nil) end)
+    teardown(function()
+        DispatchUtil.inject(nil, nil)
+    end)
 
     before_each(function()
-        for _, c in pairs(contexts) do c.ui = fakeUI(c.name); c._tree = nil end
+        for _, c in pairs(contexts) do
+            c.ui = fakeUI(c.name)
+            c._tree = nil
+        end
     end)
 
     describe("dispatcher", function()
@@ -109,7 +171,11 @@ describe("kinds resolve", function()
             assert.equal(action, executed[#executed])
         end)
         it("multi-action items", function()
-            local r = row("dispatcher", { action = { history = true, toc = true, settings = { order = { "history", "toc" } } } }, contexts.paging)
+            local r = row(
+                "dispatcher",
+                { action = { history = true, toc = true, settings = { order = { "history", "toc" } } } },
+                contexts.paging
+            )
             assert.equal("2 actions", r.label)
             assert.is_true(r.available)
             r = row("dispatcher", { action = { history = true, toc = true } }, contexts.fm)
@@ -132,7 +198,13 @@ describe("kinds resolve", function()
             wifi = false
         end)
         it("reader menu entries are unavailable in the FM", function()
-            local data = { path = { { id = "navi", text = "Navigation" }, { id = "table_of_contents", text = "Table of contents" } }, captured_in = "reader" }
+            local data = {
+                path = {
+                    { id = "navi", text = "Navigation" },
+                    { id = "table_of_contents", text = "Table of contents" },
+                },
+                captured_in = "reader",
+            }
             assert.is_false(row("menu_item", data, contexts.fm).available)
             assert.equal("Table of contents", row("menu_item", data, contexts.fm).label)
             assert.is_true(row("menu_item", data, contexts.paging).available)
@@ -143,10 +215,16 @@ describe("kinds resolve", function()
             local r = row("menu_item", data, contexts.fm)
             assert.is_true(r.available)
             assert.is_true(r.disabled)
-            assert.is_falsy(row("menu_item", { path = { { id = "setting" }, { id = "night_mode" } } }, contexts.fm).disabled)
+            assert.is_falsy(
+                row("menu_item", { path = { { id = "setting" }, { id = "night_mode" } } }, contexts.fm).disabled
+            )
             current = contexts.fm
-            local rows = Resolve.rows({ { id = "x", kind = "menu_item", data = data } }, contexts.fm, Kinds.get,
-                { hide_unavailable = true, placeholder = "P" })
+            local rows = Resolve.rows(
+                { { id = "x", kind = "menu_item", data = data } },
+                contexts.fm,
+                Kinds.get,
+                { hide_unavailable = true, placeholder = "P" }
+            )
             assert.equal("Disabled", rows[1].label)
             assert.is_true(rows[1].dim)
             assert.is_false(Resolve.actionable(rows[1]))
@@ -157,20 +235,37 @@ describe("kinds resolve", function()
             assert.equal("\238\128\128", r.icon)
         end)
         it("pages need a submenu", function()
-            assert.is_true(row("menu_item", { path = { { id = "setting" }, { id = "network" } }, page = true }, contexts.fm).available)
-            assert.is_false(row("menu_item", { path = { { id = "setting" }, { id = "night_mode" } }, page = true }, contexts.fm).available)
+            assert.is_true(
+                row("menu_item", { path = { { id = "setting" }, { id = "network" } }, page = true }, contexts.fm).available
+            )
+            assert.is_false(
+                row("menu_item", { path = { { id = "setting" }, { id = "night_mode" } }, page = true }, contexts.fm).available
+            )
         end)
         it("fails open when the menu can't be built", function()
             local ctx = { name = "filemanager", ui = fakeUI("filemanager", { broken = true }) }
-            local r = row("menu_item", { path = { { id = "setting", text = "Settings" }, { id = "x", text = "Thing" } } }, ctx)
+            local r = row(
+                "menu_item",
+                { path = { { id = "setting", text = "Settings" }, { id = "x", text = "Thing" } } },
+                ctx
+            )
             assert.is_true(r.available)
             assert.equal("Thing", r.label)
         end)
         it("builds the tree at most once per context", function()
             local builds = 0
-            local ui = { menu = { setUpdateItemTable = function(self) builds = builds + 1; self.tab_item_table = fakeTree() end } }
+            local ui = {
+                menu = {
+                    setUpdateItemTable = function(self)
+                        builds = builds + 1
+                        self.tab_item_table = fakeTree()
+                    end,
+                },
+            }
             local ctx = { name = "filemanager", ui = ui }
-            for _ = 1, 3 do row("menu_item", wifi_path, ctx) end
+            for _ = 1, 3 do
+                row("menu_item", wifi_path, ctx)
+            end
             assert.equal(1, builds)
         end)
     end)
@@ -200,7 +295,18 @@ describe("kinds resolve", function()
         end)
         it("folders are always available and lazy", function()
             local called = false
-            local item = { id = "f", kind = "folder", label = "F", data = { items = setmetatable({}, { __index = function() called = true end }) } }
+            local item = {
+                id = "f",
+                kind = "folder",
+                label = "F",
+                data = {
+                    items = setmetatable({}, {
+                        __index = function()
+                            called = true
+                        end,
+                    }),
+                },
+            }
             local r = Kinds.get("folder").resolve(item, contexts.fm)
             assert.is_true(r.available)
             assert.is_false(called)
@@ -231,15 +337,22 @@ describe("kinds resolve", function()
             current = ctx
             local rows = Resolve.rows(items, ctx, Kinds.get, { hide_unavailable = hide, placeholder = "P" })
             local n = 0
-            for _, r in ipairs(rows) do if not r.placeholder then n = n + 1 end end
+            for _, r in ipairs(rows) do
+                if not r.placeholder then n = n + 1 end
+            end
             return n
         end
-        assert.equal(1, count(contexts.fm, true))      -- a
-        assert.equal(3, count(contexts.fm, false))     -- a, plus c and d dimmed; b scoped out
-        assert.equal(3, count(contexts.paging, true))  -- a, b, d
+        assert.equal(1, count(contexts.fm, true)) -- a
+        assert.equal(3, count(contexts.fm, false)) -- a, plus c and d dimmed; b scoped out
+        assert.equal(3, count(contexts.paging, true)) -- a, b, d
         assert.equal(2, count(contexts.rolling, true)) -- a, b
         current = contexts.fm
-        local rows = Resolve.rows({ items[2] }, contexts.fm, Kinds.get, { hide_unavailable = true, placeholder = "Nothing here in the file browser" })
+        local rows = Resolve.rows(
+            { items[2] },
+            contexts.fm,
+            Kinds.get,
+            { hide_unavailable = true, placeholder = "Nothing here in the file browser" }
+        )
         assert.is_true(rows[1].placeholder)
     end)
 end)

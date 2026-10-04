@@ -1,11 +1,15 @@
 local Kinds = require("minimenu/kinds/init")
 
 describe("kinds", function()
-    setup(function() Kinds.registerBuiltins() end)
+    setup(function()
+        Kinds.registerBuiltins()
+    end)
 
     it("registers the built-in kinds, sorted for the picker", function()
         local names = {}
-        for _, p in ipairs(Kinds.list()) do table.insert(names, p.name) end
+        for _, p in ipairs(Kinds.list()) do
+            table.insert(names, p.name)
+        end
         assert.same({ "dispatcher", "menu_item", "plugin", "folder", "menu_link", "separator" }, names)
     end)
 
@@ -19,7 +23,10 @@ describe("kinds", function()
 
     local cases = {
         dispatcher = {
-            good = { { action = { toggle_wifi = true } }, { action = { a = true, b = 2, settings = { order = { "a", "b" } } } } },
+            good = {
+                { action = { toggle_wifi = true } },
+                { action = { a = true, b = 2, settings = { order = { "a", "b" } } } },
+            },
             bad = { {}, { action = {} }, { action = { settings = {} } }, { action = "x" } },
         },
         menu_item = {
@@ -37,8 +44,12 @@ describe("kinds", function()
     for kind, c in pairs(cases) do
         it("validates " .. kind, function()
             local p = Kinds.get(kind)
-            for _, d in ipairs(c.good) do assert.is_true((p.validate(d))) end
-            for _, d in ipairs(c.bad) do assert.is_false((p.validate(d))) end
+            for _, d in ipairs(c.good) do
+                assert.is_true((p.validate(d)))
+            end
+            for _, d in ipairs(c.bad) do
+                assert.is_false((p.validate(d)))
+            end
         end)
     end
 end)

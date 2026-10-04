@@ -62,7 +62,9 @@ function Resolve.tidySeparators(rows)
             table.insert(out, row)
         end
     end
-    while #out > 0 and out[#out].separator do table.remove(out) end
+    while #out > 0 and out[#out].separator do
+        table.remove(out)
+    end
     return out
 end
 

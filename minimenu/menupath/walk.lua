@@ -56,7 +56,8 @@ function Walk.callback(node)
 end
 
 function Walk.isLeaf(node)
-    return type(node) == "table" and not Walk.isSubmenu(node)
+    return type(node) == "table"
+        and not Walk.isSubmenu(node)
         and (type(node.callback) == "function" or type(node.callback_func) == "function")
 end
 
@@ -87,9 +88,7 @@ end
 
 function Walk.segment(node)
     local text = Walk.text(node)
-    if type(node.id) == "string" and node.id ~= "" then
-        return { id = node.id, text = text }
-    end
+    if type(node.id) == "string" and node.id ~= "" then return { id = node.id, text = text } end
     if text then return { text = text } end
 end
 
@@ -109,9 +108,7 @@ end
 
 --- Returns node, or nil and "missing" | "error"
 function Walk.resolve(tab_item_table, path)
-    if type(tab_item_table) ~= "table" or type(path) ~= "table" or #path == 0 then
-        return nil, "missing"
-    end
+    if type(tab_item_table) ~= "table" or type(path) ~= "table" or #path == 0 then return nil, "missing" end
     local list = tab_item_table
     local node
     for i, seg in ipairs(path) do

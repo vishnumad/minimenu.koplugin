@@ -61,12 +61,15 @@ function KindPicker.runPick(provider, target)
         if icon and icon ~= "" then item.icon = icon end
         if opts and opts.ask_label then
             local Dialogs = require("minimenu/ui/dialogs")
-            Dialogs.input({ title = _("Folder name"), input = "", hint = _("Folder"), ok_text = _("Add") }, function(text)
-                local Util = require("minimenu/util")
-                text = Util.trim(text)
-                item.label = text ~= "" and text or _("Folder")
-                insert(item)
-            end)
+            Dialogs.input(
+                { title = _("Folder name"), input = "", hint = _("Folder"), ok_text = _("Add") },
+                function(text)
+                    local Util = require("minimenu/util")
+                    text = Util.trim(text)
+                    item.label = text ~= "" and text or _("Folder")
+                    insert(item)
+                end
+            )
             return
         end
         insert(item)

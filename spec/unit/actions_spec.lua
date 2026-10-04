@@ -24,9 +24,12 @@ describe("actions lifecycle", function()
         Store.load()
         D = fakeDispatcher()
         events = {}
-        Actions.inject({ dispatcher = D, broadcast = function(name, payload)
-            table.insert(events, { name = name, payload = payload })
-        end })
+        Actions.inject({
+            dispatcher = D,
+            broadcast = function(name, payload)
+                table.insert(events, { name = name, payload = payload })
+            end,
+        })
         Actions.detach = nil
         Actions.attach(Store)
     end)
@@ -34,8 +37,10 @@ describe("actions lifecycle", function()
     it("registers a general none-category action per menu, named by id", function()
         local m = Store.createMenu("Reading tools")
         local spec = D.list["minimenu_open_" .. m.id]
-        assert.same({ category = "none", event = "MiniMenuOpen", arg = m.id,
-            title = "MiniMenu: Reading tools", general = true }, spec)
+        assert.same(
+            { category = "none", event = "MiniMenuOpen", arg = m.id, title = "MiniMenu: Reading tools", general = true },
+            spec
+        )
         assert.is_nil(spec.reader)
         assert.is_nil(spec.filemanager)
     end)

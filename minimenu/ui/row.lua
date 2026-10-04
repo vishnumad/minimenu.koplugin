@@ -8,15 +8,15 @@ local Util = require("minimenu/util")
 
 local RowView = {}
 
-RowView.CHEVRON = "\u{203A}"     -- ›
-RowView.CHECKED = "\u{F046}"     -- check-square-o
-RowView.UNCHECKED = "\u{F096}"   -- square-o
+RowView.CHEVRON = "\u{203A}" -- ›
+RowView.CHECKED = "\u{F046}" -- check-square-o
+RowView.UNCHECKED = "\u{F096}" -- square-o
 
 local COLOR_DIM = Blitbuffer.COLOR_DARK_GRAY
 
 local function textWidget(text, face, opts)
     opts = opts or {}
-    return TextWidget:new{
+    return TextWidget:new {
         text = text,
         face = face,
         bold = opts.bold,
@@ -32,9 +32,7 @@ RowView.textWidget = textWidget
 function RowView.iconWidget(icon, cfg, fgcolor)
     if not icon or icon == "" then return nil end
     local name = Util.iconName(icon)
-    if name then
-        return IconWidget:new{ icon = name, width = cfg.icon_size, height = cfg.icon_size, alpha = true }
-    end
+    if name then return IconWidget:new { icon = name, width = cfg.icon_size, height = cfg.icon_size, alpha = true } end
     return textWidget(icon, cfg.icon_face, { fgcolor = fgcolor })
 end
 
@@ -95,9 +93,7 @@ function RowView.paint(bb, view, cfg, x, y, w, h, state)
         local tw = view.trail:getSize().w
         view.trail:paintTo(bb, x + w - cfg.pad - math.floor((cfg.trail_col + tw) / 2), vcenter(view.trail))
     end
-    if state and state.open then
-        bb:invertRect(x, y, w, h)
-    end
+    if state and state.open then bb:invertRect(x, y, w, h) end
 end
 
 function RowView.free(view)

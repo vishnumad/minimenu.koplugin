@@ -4,7 +4,7 @@
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _ = require("gettext")
 
-local MiniMenu = WidgetContainer:extend{
+local MiniMenu = WidgetContainer:extend {
     name = "minimenu",
     is_doc_only = false,
 }
@@ -18,9 +18,7 @@ function MiniMenu:init()
     -- DispatcherRegisterActions is broadcast only once, so register here too;
     -- registerAction ignores names that already exist.
     self:onDispatcherRegisterActions()
-    if self.ui and self.ui.menu then
-        self.ui.menu:registerToMainMenu(self)
-    end
+    if self.ui and self.ui.menu then self.ui.menu:registerToMainMenu(self) end
     self:checkVersion()
 end
 
@@ -34,8 +32,10 @@ function MiniMenu:checkVersion()
         local UIManager = require("ui/uimanager")
         UIManager:nextTick(function()
             local InfoMessage = require("ui/widget/infomessage")
-            UIManager:show(InfoMessage:new{
-                text = _("MiniMenu is made for KOReader v2026.07.1 or later. Some features may not work on this version."),
+            UIManager:show(InfoMessage:new {
+                text = _(
+                    "MiniMenu is made for KOReader v2026.07.1 or later. Some features may not work on this version."
+                ),
             })
         end)
     end

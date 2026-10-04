@@ -18,7 +18,11 @@ return {
             exclude = ctx.menu_id,
             warn_cycle_from = ctx.menu_id,
         }, function(menu_id)
-            if menu_id then done({ menu = menu_id }) else done(nil) end
+            if menu_id then
+                done({ menu = menu_id })
+            else
+                done(nil)
+            end
         end)
     end,
 
@@ -28,9 +32,7 @@ return {
 
     resolve = function(item)
         local menu = target(item)
-        if not menu then
-            return { label = _("Missing menu"), icon = LINK_ICON, available = false }
-        end
+        if not menu then return { label = _("Missing menu"), icon = LINK_ICON, available = false } end
         return {
             label = menu.title,
             icon = LINK_ICON,

@@ -35,7 +35,10 @@ function Plugin.pickEntry(entries, data)
     if entries[data.name] then return entries[data.name] end
     local only, n = nil, 0
     for _k, v in pairs(entries) do
-        if type(v) == "table" then only = v; n = n + 1 end
+        if type(v) == "table" then
+            only = v
+            n = n + 1
+        end
     end
     if n == 1 then return only end
 end

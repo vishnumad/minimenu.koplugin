@@ -3,11 +3,17 @@ package.path = "./?.lua;" .. package.path
 
 local function template(s, ...)
     local args = { ... }
-    return (s:gsub("%%(%d+)", function(i) return tostring(args[tonumber(i)]) end))
+    return (s:gsub("%%(%d+)", function(i)
+        return tostring(args[tonumber(i)])
+    end))
 end
 
 package.preload["gettext"] = function()
-    return setmetatable({}, { __call = function(_, s) return s end })
+    return setmetatable({}, {
+        __call = function(_, s)
+            return s
+        end,
+    })
 end
 package.preload["logger"] = function()
     local noop = function() end

@@ -9,24 +9,49 @@ local Defaults = {}
 
 Defaults.TITLE = _("Quick menu")
 
-local function act(name) return { kind = "dispatcher", data = { action = { [name] = true } } } end
-local function sep() return { kind = "separator", data = {} } end
-local function folder(label, items, scope) return { kind = "folder", label = label, scope = scope, data = { items = items } } end
+local function act(name)
+    return { kind = "dispatcher", data = { action = { [name] = true } } }
+end
+local function sep()
+    return { kind = "separator", data = {} }
+end
+local function folder(label, items, scope)
+    return { kind = "folder", label = label, scope = scope, data = { items = items } }
+end
 
 -- Kept short enough to fit one page on a 6" screen in the reader.
 local function items()
     return {
-        act("toc"), act("bookmarks"), act("fulltext_search"),
+        act("toc"),
+        act("bookmarks"),
+        act("fulltext_search"),
         -- Reader only, so the file browser doesn't show an empty folder.
-        folder(_("Go to"), { act("go_to"), act("skim"), act("book_map"), act("previous_location"),
-            act("first_page"), act("last_page") }, "reader"),
+        folder(_("Go to"), {
+            act("go_to"),
+            act("skim"),
+            act("book_map"),
+            act("previous_location"),
+            act("first_page"),
+            act("last_page"),
+        }, "reader"),
         sep(),
-        act("history"), act("favorites"),
+        act("history"),
+        act("favorites"),
         sep(),
-        act("night_mode"), act("show_frontlight_dialog"),
+        act("night_mode"),
+        act("show_frontlight_dialog"),
         sep(),
-        folder(_("Device"), { act("toggle_wifi"), act("full_refresh"), sep(), act("suspend"), act("restart"),
-            act("exit"), sep(), act("reboot"), act("poweroff") }),
+        folder(_("Device"), {
+            act("toggle_wifi"),
+            act("full_refresh"),
+            sep(),
+            act("suspend"),
+            act("restart"),
+            act("exit"),
+            sep(),
+            act("reboot"),
+            act("poweroff"),
+        }),
     }
 end
 
@@ -52,11 +77,15 @@ function Defaults.build(issue, supported)
                 table.insert(tidy, item)
             end
         end
-        while #tidy > 0 and tidy[#tidy].kind == "separator" do table.remove(tidy) end
+        while #tidy > 0 and tidy[#tidy].kind == "separator" do
+            table.remove(tidy)
+        end
         local out = {}
         for i, item in ipairs(tidy) do
             out[i] = { id = issue(), kind = item.kind, label = item.label, scope = item.scope, data = {} }
-            for k, v in pairs(item.data) do out[i].data[k] = v end
+            for k, v in pairs(item.data) do
+                out[i].data[k] = v
+            end
         end
         return out
     end

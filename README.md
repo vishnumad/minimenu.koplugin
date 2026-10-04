@@ -1,6 +1,6 @@
 # MiniMenu for KOReader
 
-Create small popup menus you can open from a tap, gesture, a key, a profile or another
+Create popup menus you can open from a tap, gesture, or another
 plugin.
 
 ## Install
@@ -17,7 +17,14 @@ Copy `minimenu.koplugin` into KOReader's `plugins/` folder and restart.
 
 ## Development
 
-**Run integration tests**
+Install project dependencies with `mise install`.  
+Set up [mise](https://github.com/jdx/mise) if you don't have it.
+
 ```sh
-KOREADER_DIR=<emulator>/koreader spec/integration/run.sh
+make check
+make lint
+make fmt
+make fmt-check
+make test       
+make integration KOREADER_DIR=<emulator>/koreader # Add KO_PLUGINS_DISABLED=zenos to skip plugins installed in the emulator
 ```

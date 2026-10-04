@@ -28,34 +28,58 @@ local function radioList(values, names, get, set)
         table.insert(items, {
             text = names[v] or tostring(v),
             radio = true,
-            checked_func = function() return get() == v end,
-            callback = function() set(v) end,
+            checked_func = function()
+                return get() == v
+            end,
+            callback = function()
+                set(v)
+            end,
         })
     end
     return items
 end
 
 local function optionItems(menu_id)
-    local function get(key) return Store.option(Store.menu(menu_id), key) end
-    local function set(key, v) Store.setOption(menu_id, key, v) end
+    local function get(key)
+        return Store.option(Store.menu(menu_id), key)
+    end
+    local function set(key, v)
+        Store.setOption(menu_id, key, v)
+    end
     local function toggle(key, text, help_text)
         return {
             text = text,
             help_text = help_text,
-            checked_func = function() return get(key) end,
-            callback = function() set(key, not get(key)) end,
+            checked_func = function()
+                return get(key)
+            end,
+            callback = function()
+                set(key, not get(key))
+            end,
         }
     end
     return {
         {
-            text_func = function() return T(_("Position: %1"), Editor.POSITION_NAMES[get("position")] or "") end,
-            help_text = _("With “At the gesture”, a menu opened without a tap position (from a profile, a key or another plugin) opens in the center."),
-            sub_item_table = radioList(Store.POSITIONS, Editor.POSITION_NAMES,
-                function() return get("position") end, function(v) set("position", v) end),
+            text_func = function()
+                return T(_("Position: %1"), Editor.POSITION_NAMES[get("position")] or "")
+            end,
+            help_text = _(
+                "With “At the gesture”, a menu opened without a tap position (from a profile, a key or another plugin) opens in the center."
+            ),
+            sub_item_table = radioList(Store.POSITIONS, Editor.POSITION_NAMES, function()
+                return get("position")
+            end, function(v)
+                set("position", v)
+            end),
         },
         toggle("show_title", _("Show title")),
-        toggle("hide_unavailable", _("Hide unavailable items"),
-            _("Hide items that can't run here (for example reader actions in the file browser). When off, they are shown dimmed.")),
+        toggle(
+            "hide_unavailable",
+            _("Hide unavailable items"),
+            _(
+                "Hide items that can't run here (for example reader actions in the file browser). When off, they are shown dimmed."
+            )
+        ),
         toggle("lock", _("Lock (no long-press edit)")),
     }
 end
@@ -63,7 +87,9 @@ end
 --- Fills `items` in place, so it can refresh itself.
 function Editor.mainMenu(items)
     items = items or {}
-    for i = #items, 1, -1 do items[i] = nil end
+    for i = #items, 1, -1 do
+        items[i] = nil
+    end
     table.insert(items, {
         text = _("New menu…"),
         keep_menu_open = true,
@@ -82,8 +108,12 @@ function Editor.mainMenu(items)
                 local m = Store.menu(id)
                 return m and m.title or _("Deleted menu")
             end,
-            enabled_func = function() return Store.menu(id) ~= nil end,
-            sub_item_table_func = function() return Editor.menuSettings(id) end,
+            enabled_func = function()
+                return Store.menu(id) ~= nil
+            end,
+            sub_item_table_func = function()
+                return Editor.menuSettings(id)
+            end,
         })
     end
     if #items > 1 then items[#items].separator = true end
@@ -91,7 +121,9 @@ function Editor.mainMenu(items)
     -- Rebuild when coming back up from a menu's page, which may have renamed
     -- or deleted it.
     items.needs_refresh = true
-    items.refresh_func = function() return Editor.mainMenu(items) end
+    items.refresh_func = function()
+        return Editor.mainMenu(items)
+    end
     return items
 end
 
@@ -109,19 +141,25 @@ end
 function Editor.menuSettings(menu_id)
     local Dialogs = require("minimenu/ui/dialogs")
     local Util = require("minimenu/util")
-    local function menu() return Store.menu(menu_id) end
+    local function menu()
+        return Store.menu(menu_id)
+    end
     local items = {
         {
             text = _("Open now"),
             callback = function(tm)
                 tm:closeMenu()
-                UIManager:nextTick(function() require("minimenu/api").open(menu_id) end)
+                UIManager:nextTick(function()
+                    require("minimenu/api").open(menu_id)
+                end)
             end,
         },
         {
             text = _("Edit items…"),
             keep_menu_open = true,
-            callback = function() Editor.showItems(menu_id) end,
+            callback = function()
+                Editor.showItems(menu_id)
+            end,
         },
         {
             text = _("Rename…"),
@@ -139,7 +177,10 @@ function Editor.menuSettings(menu_id)
         {
             text = _("Show in action list"),
             help_text = _("Lists this menu as a KOReader action, so gestures, profiles and other plugins can open it."),
-            checked_func = function() local m = menu() return m and m.register_action ~= false end,
+            checked_func = function()
+                local m = menu()
+                return m and m.register_action ~= false
+            end,
             callback = function()
                 local m = menu()
                 if m then Store.setRegisterAction(menu_id, m.register_action == false) end
@@ -168,25 +209,32 @@ function Editor.menuSettings(menu_id)
         callback = function(tm)
             local m = menu()
             if not m then return end
-            Dialogs.confirm(T(_("Delete the menu “%1”?\n\nGestures and profiles that open it will be unbound."), m.title),
-                _("Delete"), function()
+            Dialogs.confirm(
+                T(_("Delete the menu “%1”?\n\nGestures and profiles that open it will be unbound."), m.title),
+                _("Delete"),
+                function()
                     Store.deleteMenu(menu_id)
                     tm:backToUpperMenu()
-                end)
+                end
+            )
         end,
     })
     return items
 end
 
 function Editor.textSizeItem()
-    local function size() return Store.setting("font_size") or Store.DEFAULT_FONT_SIZE end
+    local function size()
+        return Store.setting("font_size") or Store.DEFAULT_FONT_SIZE
+    end
     return {
-        text_func = function() return T(_("Text size: %1"), size()) end,
+        text_func = function()
+            return T(_("Text size: %1"), size())
+        end,
         help_text = _("Text size in all menus. Rows and icons grow with it."),
         keep_menu_open = true,
         callback = function(tm)
             local SpinWidget = require("ui/widget/spinwidget")
-            UIManager:show(SpinWidget:new{
+            UIManager:show(SpinWidget:new {
                 title_text = _("Text size"),
                 value = size(),
                 value_min = 12,
@@ -227,12 +275,20 @@ function Editor.itemRows(menu_id, folder_id, ctx, nav)
         table.insert(rows, {
             text = text,
             mandatory = is_folder and ((marker and (marker .. "  ") or "") .. "\u{203A}")
-                or marker or (provider and provider.title) or item.kind,
+                or marker
+                or (provider and provider.title)
+                or item.kind,
             dim = marker ~= nil,
             callback = function()
-                if is_folder then nav.enter(id) else ItemDialog.show(menu_id, id, ctx) end
+                if is_folder then
+                    nav.enter(id)
+                else
+                    ItemDialog.show(menu_id, id, ctx)
+                end
             end,
-            hold_callback = function() ItemDialog.show(menu_id, id, ctx) end,
+            hold_callback = function()
+                ItemDialog.show(menu_id, id, ctx)
+            end,
         })
     end
     table.insert(rows, {
@@ -273,7 +329,9 @@ function Editor.showItems(menu_id)
         local menu = Store.menu(menu_id)
         for i = #path, 1, -1 do
             if not model.find(menu.items, path[i]) then
-                for j = #path, i, -1 do path[j] = nil end
+                for j = #path, i, -1 do
+                    path[j] = nil
+                end
             end
         end
         Dialogs.relist(list, title(), Editor.itemRows(menu_id, path[#path], ctx, nav), #path, keep_page)

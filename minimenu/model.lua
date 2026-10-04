@@ -37,8 +37,12 @@ function M.deepcopy(value)
 end
 
 function M.children(item)
-    if type(item) == "table" and item.kind == M.FOLDER and type(item.data) == "table"
-            and type(item.data.items) == "table" then
+    if
+        type(item) == "table"
+        and item.kind == M.FOLDER
+        and type(item.data) == "table"
+        and type(item.data.items) == "table"
+    then
         return item.data.items
     end
 end
@@ -58,9 +62,7 @@ function M.walk(items, fn)
             table.remove(ancestors)
         else
             frame.i = frame.i + 1
-            if fn(item, frame.list, frame.i - 1, frame.depth, ancestors) then
-                return true
-            end
+            if fn(item, frame.list, frame.i - 1, frame.depth, ancestors) then return true end
             local kids = M.children(item)
             if kids then
                 table.insert(ancestors, item)
@@ -77,7 +79,9 @@ function M.find(items, id)
         if item.id == id then
             found, flist, findex = item, list, index
             fpath = {}
-            for i, a in ipairs(ancestors) do fpath[i] = a end
+            for i, a in ipairs(ancestors) do
+                fpath[i] = a
+            end
             return true
         end
     end)
@@ -122,9 +126,7 @@ end
 function M.moveTo(items, id, folder_id)
     local item = M.find(items, id)
     if not item then return false, "missing item" end
-    if folder_id and M.isSelfOrDescendant(item, folder_id) then
-        return false, "descendant"
-    end
+    if folder_id and M.isSelfOrDescendant(item, folder_id) then return false, "descendant" end
     local dest = M.listFor(items, folder_id)
     if not dest then return false, "missing folder" end
     M.remove(items, id)
@@ -156,9 +158,7 @@ function M.folders(items, exclude_id)
             skip_depth = depth
             return
         end
-        if M.children(item) then
-            table.insert(out, { item = item, depth = depth })
-        end
+        if M.children(item) then table.insert(out, { item = item, depth = depth }) end
     end)
     return out
 end
@@ -167,7 +167,9 @@ end
 function M.cloneItem(item, issue)
     local copy = M.deepcopy(item)
     copy.id = issue()
-    M.walk(M.children(copy) or {}, function(it) it.id = issue() end)
+    M.walk(M.children(copy) or {}, function(it)
+        it.id = issue()
+    end)
     return copy
 end
 
@@ -222,15 +224,25 @@ Returns clean, changed
 function M.sanitize(input, kinds)
     local changed = false
     local data
-    if type(input) ~= "table" then
-        return M.empty(), true
-    end
+    if type(input) ~= "table" then return M.empty(), true end
     data = M.deepcopy(input)
 
-    if type(data.version) ~= "number" then data.version = M.SCHEMA_VERSION; changed = true end
-    if type(data.menus) ~= "table" then data.menus = {}; changed = true end
-    if type(data.menu_order) ~= "table" then data.menu_order = {}; changed = true end
-    if data.settings ~= nil and type(data.settings) ~= "table" then data.settings = nil; changed = true end
+    if type(data.version) ~= "number" then
+        data.version = M.SCHEMA_VERSION
+        changed = true
+    end
+    if type(data.menus) ~= "table" then
+        data.menus = {}
+        changed = true
+    end
+    if type(data.menu_order) ~= "table" then
+        data.menu_order = {}
+        changed = true
+    end
+    if data.settings ~= nil and type(data.settings) ~= "table" then
+        data.settings = nil
+        changed = true
+    end
 
     local max_id = 0
     local function see(id)
@@ -264,8 +276,12 @@ function M.sanitize(input, kinds)
         if not in_order[id] then table.insert(missing, id) end
     end
     if #missing > 0 then
-        table.sort(missing, function(a, b) return (idNumber(a) or 0) < (idNumber(b) or 0) end)
-        for _, id in ipairs(missing) do table.insert(order, id) end
+        table.sort(missing, function(a, b)
+            return (idNumber(a) or 0) < (idNumber(b) or 0)
+        end)
+        for _, id in ipairs(missing) do
+            table.insert(order, id)
+        end
         changed = true
     end
     if #order ~= #data.menu_order then changed = true end
@@ -277,9 +293,18 @@ function M.sanitize(input, kinds)
     local dupes = {}
     for _, mid in ipairs(order) do
         local menu = menus[mid]
-        if type(menu.title) ~= "string" then menu.title = mid; changed = true end
-        if menu.options ~= nil and type(menu.options) ~= "table" then menu.options = nil; changed = true end
-        if type(menu.items) ~= "table" then menu.items = {}; changed = true end
+        if type(menu.title) ~= "string" then
+            menu.title = mid
+            changed = true
+        end
+        if menu.options ~= nil and type(menu.options) ~= "table" then
+            menu.options = nil
+            changed = true
+        end
+        if type(menu.items) ~= "table" then
+            menu.items = {}
+            changed = true
+        end
         local stack = { menu.items }
         while #stack > 0 do
             local list = table.remove(stack)
@@ -288,7 +313,10 @@ function M.sanitize(input, kinds)
                 local ok = type(item) == "table" and type(item.id) == "string" and type(item.kind) == "string"
                 if ok and item.data ~= nil and type(item.data) ~= "table" then ok = false end
                 if ok then
-                    if item.data == nil then item.data = {}; changed = true end
+                    if item.data == nil then
+                        item.data = {}
+                        changed = true
+                    end
                     local provider = kinds and kinds(item.kind)
                     if provider and provider.validate then
                         local valid = provider.validate(item.data)
@@ -310,8 +338,12 @@ function M.sanitize(input, kinds)
                 end
             end
             if #kept ~= #list then
-                for i = #list, 1, -1 do list[i] = nil end
-                for i, v in ipairs(kept) do list[i] = v end
+                for i = #list, 1, -1 do
+                    list[i] = nil
+                end
+                for i, v in ipairs(kept) do
+                    list[i] = v
+                end
             end
         end
     end

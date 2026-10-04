@@ -21,9 +21,7 @@ return {
     end,
 
     validate = function(data)
-        if type(data) ~= "table" or type(data.path) ~= "table" or #data.path == 0 then
-            return false, "no path"
-        end
+        if type(data) ~= "table" or type(data.path) ~= "table" or #data.path == 0 then return false, "no path" end
         for _i, seg in ipairs(data.path) do
             if type(seg) ~= "table" or (type(seg.id) ~= "string" and type(seg.text) ~= "string") then
                 return false, "bad path segment"
@@ -44,7 +42,11 @@ return {
             row.run = function()
                 local node = Walk.resolve(Live.tree({ ui = ctx.ui }), data.path)
                 if not node then return end
-                if data.page then Live.openPage(node) else Live.runLeaf(node, ctx.ui) end
+                if data.page then
+                    Live.openPage(node)
+                else
+                    Live.runLeaf(node, ctx.ui)
+                end
             end
             return row
         end
@@ -60,14 +62,18 @@ return {
         if data.page then
             row.available = Walk.isSubmenu(node) or #data.path == 1
             row.disabled = row.available and not Walk.enabled(node)
-            row.run = function() Live.openPage(node) end
+            row.run = function()
+                Live.openPage(node)
+            end
             return row
         end
         row.available = Walk.isLeaf(node)
         row.disabled = row.available and not Walk.enabled(node)
         row.checked = Walk.checked(node)
         row.keep_open = row.checked ~= nil
-        row.run = function() Live.runLeaf(node, ctx.ui) end
+        row.run = function()
+            Live.runLeaf(node, ctx.ui)
+        end
         return row
     end,
 

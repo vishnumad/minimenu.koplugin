@@ -13,9 +13,7 @@ end
 --- Returns { name = "reader"|"filemanager", sub = "paging"|"rolling"|nil, ui }
 function Context.current()
     local reader = Context.readerUI()
-    if reader then
-        return { name = "reader", sub = reader.paging and "paging" or "rolling", ui = reader }
-    end
+    if reader then return { name = "reader", sub = reader.paging and "paging" or "rolling", ui = reader } end
     return { name = "filemanager", ui = Context.fileManager() }
 end
 

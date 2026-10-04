@@ -2,9 +2,15 @@ local H = require("harness").setup()
 local Store, API, test, eq = H.Store, H.API, H.test, H.eq
 local Dispatcher = require("dispatcher")
 
-local function act(name) return { id = Store.issueItemId(), kind = "dispatcher", data = { action = { [name] = true } } } end
-local function sep() return { id = Store.issueItemId(), kind = "separator", data = {} } end
-local function folder(label, items) return { id = Store.issueItemId(), kind = "folder", label = label, data = { items = items or {} } } end
+local function act(name)
+    return { id = Store.issueItemId(), kind = "dispatcher", data = { action = { [name] = true } } }
+end
+local function sep()
+    return { id = Store.issueItemId(), kind = "separator", data = {} }
+end
+local function folder(label, items)
+    return { id = Store.issueItemId(), kind = "folder", label = label, data = { items = items or {} } }
+end
 
 local fm = H.fm()
 
@@ -16,10 +22,16 @@ local tools = Store.createMenu("Reading tools")
 Store.editItems(tools.id, function(items)
     table.insert(items, act("history"))
     table.insert(items, act("favorites"))
-    table.insert(items, act("toc"))                -- reader only: hidden in FM
+    table.insert(items, act("toc")) -- reader only: hidden in FM
     table.insert(items, sep())
-    table.insert(items, folder("Tools", { act("screenshot"), act("night_mode"),
-        folder("Network", { act("toggle_wifi"), act("show_network_info") }) }))
+    table.insert(
+        items,
+        folder("Tools", {
+            act("screenshot"),
+            act("night_mode"),
+            folder("Network", { act("toggle_wifi"), act("show_network_info") }),
+        })
+    )
     table.insert(items, act("full_refresh"))
     return true
 end)
@@ -78,12 +90,23 @@ end)
 test("running a leaf closes the popup, then runs on nextTick", function()
     local ran = false
     local Kinds = require("minimenu/kinds/init")
-    Kinds.register({ name = "probe", resolve = function() return { label = "Probe", run = function()
-        assert(not API.isOpen(), "popup must be closed before running")
-        ran = true
-    end } end })
+    Kinds.register({
+        name = "probe",
+        resolve = function()
+            return {
+                label = "Probe",
+                run = function()
+                    assert(not API.isOpen(), "popup must be closed before running")
+                    ran = true
+                end,
+            }
+        end,
+    })
     local m = Store.createMenu("Probe menu")
-    Store.editItems(m.id, function(items) table.insert(items, { id = Store.issueItemId(), kind = "probe", data = {} }) return true end)
+    Store.editItems(m.id, function(items)
+        table.insert(items, { id = Store.issueItemId(), kind = "probe", data = {} })
+        return true
+    end)
     API.open(m.id)
     H.drain()
     H.tap(H.rowCenter(1, 1))
@@ -121,8 +144,10 @@ for _, start in ipairs({ { 30, 60, "left" }, { 570, 60, "right" }, { 300, 400, "
         local sw, sh = H.Screen:getWidth(), H.Screen:getHeight()
         for k, e in ipairs(p.chain) do
             local r = e.panel:rect()
-            assert(r.x >= 0 and r.y >= 0 and r.x + r.w <= sw and r.y + r.h <= sh,
-                ("panel %d off screen: %d,%d %dx%d"):format(k, r.x, r.y, r.w, r.h))
+            assert(
+                r.x >= 0 and r.y >= 0 and r.x + r.w <= sw and r.y + r.h <= sh,
+                ("panel %d off screen: %d,%d %dx%d"):format(k, r.x, r.y, r.w, r.h)
+            )
         end
         H.shot("p0_deep_" .. start[3])
         -- back closes the deepest flyout each time, then the popup
@@ -141,11 +166,18 @@ test("stacked cards: ancestor strips stay tappable", function()
     API.open(deep.id, { gesture = H.gesture("tap", 300, 400) })
     H.drain()
     local p = assert(H.popup())
-    for level = 1, 6 do H.tap(H.rowCenter(level, H.rowIndex(level, "Level " .. level))) end
+    for level = 1, 6 do
+        H.tap(H.rowCenter(level, H.rowIndex(level, "Level " .. level)))
+    end
     eq(7, #p.chain)
     -- find a level with a stacked card and tap its parent's visible strip
     local stacked
-    for k = 2, #p.chain do if p.chain[k].mode == "stacked" then stacked = k break end end
+    for k = 2, #p.chain do
+        if p.chain[k].mode == "stacked" then
+            stacked = k
+            break
+        end
+    end
     assert(stacked, "expected stacked cards on 600px")
     local parent = p.chain[stacked - 1].panel
     local child = p.chain[stacked].panel

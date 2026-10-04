@@ -3,35 +3,60 @@ local Store, API, test, eq = H.Store, H.API, H.test, H.eq
 
 local function item(kind, data, extra)
     local it = { id = Store.issueItemId(), kind = kind, data = data }
-    for k, v in pairs(extra or {}) do it[k] = v end
+    for k, v in pairs(extra or {}) do
+        it[k] = v
+    end
     return it
 end
-local function act(name) return item("dispatcher", { action = { [name] = true } }) end
+local function act(name)
+    return item("dispatcher", { action = { [name] = true } })
+end
 local function path(...)
     local p = {}
-    for _, id in ipairs({ ... }) do table.insert(p, { id = id }) end
+    for _, id in ipairs({ ... }) do
+        table.insert(p, { id = id })
+    end
     return p
 end
-local function labels() return H.rowLabels(1) end
+local function labels()
+    return H.rowLabels(1)
+end
 local function has(list, label)
-    for _, l in ipairs(list) do if l == label then return true end end
+    for _, l in ipairs(list) do
+        if l == label then return true end
+    end
     return false
 end
 
 local other = Store.createMenu("Other menu")
-Store.editItems(other.id, function(items) table.insert(items, act("history")) return true end)
+Store.editItems(other.id, function(items)
+    table.insert(items, act("history"))
+    return true
+end)
 
 local quick = Store.createMenu("Quick")
 Store.editItems(quick.id, function(items)
-    table.insert(items, item("menu_item", { path = path("setting", "night_mode"), toggle = true, captured_in = "filemanager" }))
-    table.insert(items, item("menu_item", { path = path("setting", "network", "network_wifi"), toggle = true, captured_in = "filemanager" }))
+    table.insert(
+        items,
+        item("menu_item", { path = path("setting", "night_mode"), toggle = true, captured_in = "filemanager" })
+    )
+    table.insert(
+        items,
+        item(
+            "menu_item",
+            { path = path("setting", "network", "network_wifi"), toggle = true, captured_in = "filemanager" }
+        )
+    )
     table.insert(items, item("menu_item", { path = path("navi", "table_of_contents"), captured_in = "reader" }))
     table.insert(items, act("toc"))
-    table.insert(items, act("toggle_page_flipping"))   -- paging only
-    table.insert(items, act("toggle_style_tweaks"))    -- rolling only
+    table.insert(items, act("toggle_page_flipping")) -- paging only
+    table.insert(items, act("toggle_style_tweaks")) -- rolling only
     table.insert(items, item("plugin", { name = "kosync", doc_only = true }))
     table.insert(items, item("plugin", { name = "statistics" }))
-    table.insert(items, item("menu_item", { path = path("setting", "network"), page = true, captured_in = "filemanager" }))
+    table.insert(
+        items,
+        item("menu_item", { path = path("setting", "network"), page = true, captured_in = "filemanager" })
+    )
     table.insert(items, item("menu_link", { menu = other.id }))
     table.insert(items, item("menu_link", { menu = "m999" }))
     table.insert(items, item("dispatcher", { action = { not_a_real_action = true } }))
@@ -78,7 +103,9 @@ test("dimming instead of hiding shows reader-only rows inert", function()
     eq(true, has(l, "(Missing menu)"), "dimmed dangling link")
     local p = assert(H.popup())
     local idx
-    for i, row in ipairs(p.chain[1].panel.rows) do if row.label == "Table of contents" then idx = i end end
+    for i, row in ipairs(p.chain[1].panel.rows) do
+        if row.label == "Table of contents" then idx = i end
+    end
     H.tap(H.rowCenter(1, idx))
     eq(true, not p.closed, "tapping a dimmed row does nothing")
     H.shot("p1_quick_fm_dimmed")
@@ -165,7 +192,9 @@ test("editor marks items hidden here", function()
     local Context = require("minimenu/context")
     local rows = Editor.itemRows(quick.id, nil, Context.current(), {})
     local marks = {}
-    for _, r in ipairs(rows) do marks[r.text] = r.mandatory end
+    for _, r in ipairs(rows) do
+        marks[r.text] = r.mandatory
+    end
     eq("Not available here", marks["Table of contents"])
     eq("Not available here", marks["\u{F0C9}  Missing menu"])
 end)
@@ -174,12 +203,18 @@ test("capture picker drills lazily and captures a leaf with its path", function(
     local Capture = require("minimenu/ui/pickers/menu_capture")
     local Context = require("minimenu/context")
     local got
-    Capture.pick(Context.current(), function(data) got = data or false end)
+    Capture.pick(Context.current(), function(data)
+        got = data or false
+    end)
     H.drain()
     local menu = H.UIManager._window_stack[#H.UIManager._window_stack].widget
     local function choose(text)
         for _, it in ipairs(menu.item_table) do
-            if it.text == text then it.callback(menu) H.drain() return end
+            if it.text == text then
+                it.callback(menu)
+                H.drain()
+                return
+            end
         end
         error("no entry " .. text)
     end
@@ -199,14 +234,18 @@ end)
 test("dispatcher picker returns the first single selection", function()
     local DP = require("minimenu/ui/pickers/dispatcher")
     local got
-    local tm = DP.pick({}, function(action) got = action or false end)
+    local tm = DP.pick({}, function(action)
+        got = action or false
+    end)
     H.drain()
     -- General section, then "History"
     local general = tm.item_table[1]
     tm:onMenuSelect(general)
     H.drain()
     local hist
-    for _, it in ipairs(tm.item_table) do if it.text == "History" then hist = it end end
+    for _, it in ipairs(tm.item_table) do
+        if it.text == "History" then hist = it end
+    end
     assert(hist, "History in General")
     tm:onMenuSelect(hist)
     H.drain()
@@ -238,9 +277,16 @@ test("a greyed-out reader entry stays visible (dimmed) as the first row", functi
     local reader = require("apps/reader/readerui").instance
     local back = Store.createMenu("Back first")
     Store.editItems(back.id, function(items)
-        table.insert(items, item("menu_item", { path = { { id = "navi", text = "Navigation" },
-            { id = "go_to_previous_location", text = "Go back to previous location" } }, captured_in = "reader" },
-            { label = "Go back" }))
+        table.insert(
+            items,
+            item("menu_item", {
+                path = {
+                    { id = "navi", text = "Navigation" },
+                    { id = "go_to_previous_location", text = "Go back to previous location" },
+                },
+                captured_in = "reader",
+            }, { label = "Go back" })
+        )
         table.insert(items, act("toc"))
         return true
     end)

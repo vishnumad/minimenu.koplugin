@@ -22,7 +22,7 @@ local Panel = require("minimenu/ui/panel")
 local Resolve = require("minimenu/resolve")
 local Store = require("minimenu/store")
 
-local Popup = InputContainer:extend{
+local Popup = InputContainer:extend {
     name = "MiniMenuPopup",
     menu_id = nil,
     open_opts = nil, -- { gesture, anchor, prefer, on_close }
@@ -64,20 +64,21 @@ local function union(a, b)
     if not b then return a end
     local x, y = math.min(a.x, b.x), math.min(a.y, b.y)
     return {
-        x = x, y = y,
+        x = x,
+        y = y,
         w = math.max(a.x + a.w, b.x + b.w) - x,
         h = math.max(a.y + a.h, b.y + b.h) - y,
     }
 end
 
 local function toGeom(r)
-    return r and Geom:new{ x = r.x, y = r.y, w = r.w, h = r.h }
+    return r and Geom:new { x = r.x, y = r.y, w = r.w, h = r.h }
 end
 
 function Popup:init()
     local sw, sh = Screen:getWidth(), Screen:getHeight()
     self.screen = { w = sw, h = sh }
-    self.dimen = Geom:new{ x = 0, y = 0, w = sw, h = sh }
+    self.dimen = Geom:new { x = 0, y = 0, w = sw, h = sh }
     self.open_opts = self.open_opts or {}
     self.ctx = Context.current()
     self.ctx.menu_id = self.menu_id
@@ -88,10 +89,10 @@ function Popup:init()
 
     local range = self.dimen
     self.ges_events = {
-        Tap = { GestureRange:new{ ges = "tap", range = range } },
-        Hold = { GestureRange:new{ ges = "hold", range = range } },
-        HoldRelease = { GestureRange:new{ ges = "hold_release", range = range } },
-        Swipe = { GestureRange:new{ ges = "swipe", range = range } },
+        Tap = { GestureRange:new { ges = "tap", range = range } },
+        Hold = { GestureRange:new { ges = "hold", range = range } },
+        HoldRelease = { GestureRange:new { ges = "hold_release", range = range } },
+        Swipe = { GestureRange:new { ges = "swipe", range = range } },
     }
     if Device:hasKeys() then
         local Input = Device.input
@@ -108,7 +109,9 @@ function Popup:init()
 
     self:buildLevel(1)
     self:placeLevel(1)
-    self.unsubscribe = Store.subscribe(function(ev) self:onStoreEvent(ev) end)
+    self.unsubscribe = Store.subscribe(function(ev)
+        self:onStoreEvent(ev)
+    end)
 end
 
 function Popup:placeholderText()
@@ -152,7 +155,7 @@ function Popup:buildLevel(k)
     self.chain[k] = entry
     local old = entry.panel
     local bounds = self:widthBounds()
-    entry.panel = Panel.new{
+    entry.panel = Panel.new {
         rows = self:resolveRows(self:levelItems(k)),
         cfg = self.cfg,
         title = k == 1 and self.options.show_title and self.menu.title or nil,
@@ -206,17 +209,23 @@ function Popup:placeLevel(k)
     local parent_entry = self.chain[k - 1]
     local parent = parent_entry.panel
     local row_rect = parent:rowRect(parent_entry.open_index)
-    if not self.direction then
-        self.direction = Anchor.cascadeDirection(self.chain[1].panel:rect(), self.screen)
-    end
+    if not self.direction then self.direction = Anchor.cascadeDirection(self.chain[1].panel:rect(), self.screen) end
     panel.header = nil
     local w = panel:measure(max_h)
     local bounds = self:widthBounds()
     local avoid = {}
-    for j = 1, k - 2 do table.insert(avoid, self.chain[j].panel:rect()) end
-    local x, fw, mode = Anchor.flyoutX{
-        parent = parent:rect(), width = w, screen = self.screen, margin = cfg.margin,
-        direction = self.direction, overlap = cfg.border, indent = cfg.icon_col, min_w = bounds.min_w,
+    for j = 1, k - 2 do
+        table.insert(avoid, self.chain[j].panel:rect())
+    end
+    local x, fw, mode = Anchor.flyoutX {
+        parent = parent:rect(),
+        width = w,
+        screen = self.screen,
+        margin = cfg.margin,
+        direction = self.direction,
+        overlap = cfg.border,
+        indent = cfg.icon_col,
+        min_w = bounds.min_w,
         avoid = avoid,
     }
     entry.mode = mode
@@ -335,8 +344,13 @@ function Popup:refreshLevel(k)
     local x, y = self.chain[k].panel.x, self.chain[k].panel.y
     self:buildLevel(k)
     local panel = self.chain[k].panel
-    local w, h = panel:measure(k == 1 and self:maxPanelHeight() or math.min(self:maxPanelHeight(), self.screen.h - 2 * self.cfg.margin))
-    if k > 1 and self.chain[k].mode == "stacked" then panel.header = self:breadcrumb(k); w, h = panel:measure(self:maxPanelHeight()) end
+    local w, h = panel:measure(
+        k == 1 and self:maxPanelHeight() or math.min(self:maxPanelHeight(), self.screen.h - 2 * self.cfg.margin)
+    )
+    if k > 1 and self.chain[k].mode == "stacked" then
+        panel.header = self:breadcrumb(k)
+        w, h = panel:measure(self:maxPanelHeight())
+    end
     w = math.min(w, self.screen.w - self.cfg.margin - x)
     y = math.min(y, self.screen.h - self.cfg.margin - h)
     panel:layout(x, y, w, h)
@@ -354,8 +368,13 @@ function Popup:rebuild()
     local before = self:chainRect(1)
     local depth = #self.chain
     local path = {} -- path[k]: id of the item that opened level k
-    for k = 2, depth do path[k] = self.chain[k].item_id end
-    for k = depth, 2, -1 do self.chain[k].panel:free(); self.chain[k] = nil end
+    for k = 2, depth do
+        path[k] = self.chain[k].item_id
+    end
+    for k = depth, 2, -1 do
+        self.chain[k].panel:free()
+        self.chain[k] = nil
+    end
     self.direction = nil
     self:buildLevel(1)
     self:placeLevel(1)
@@ -365,7 +384,10 @@ function Popup:rebuild()
         local parent = self.chain[k - 1]
         local found
         for i, row in ipairs(parent.panel.rows) do
-            if row.item and row.item.id == id and row.children then found = i break end
+            if row.item and row.item.id == id and row.children then
+                found = i
+                break
+            end
         end
         if not found then break end
         local page = parent.panel:pageOf(found)
@@ -386,11 +408,14 @@ end
 
 function Popup:onStoreEvent(ev)
     if self.closed then return end
-    if ev.type == "menu_deleted" and ev.menu_id == self.menu_id then
-        return self:close()
-    end
-    if ev.type == "items_changed" or ev.type == "menu_changed" or ev.type == "menu_renamed"
-            or ev.type == "settings_changed" or ev.type == "menu_deleted" then
+    if ev.type == "menu_deleted" and ev.menu_id == self.menu_id then return self:close() end
+    if
+        ev.type == "items_changed"
+        or ev.type == "menu_changed"
+        or ev.type == "menu_renamed"
+        or ev.type == "settings_changed"
+        or ev.type == "menu_deleted"
+    then
         if ev.type == "settings_changed" then self.cfg = Popup.metrics() end
         self:rebuild()
     end
@@ -422,8 +447,13 @@ end
 
 function Popup:onCloseWidget()
     self.closed = true
-    for _, entry in ipairs(self.chain) do entry.panel:free() end
-    if self.unsubscribe then self.unsubscribe(); self.unsubscribe = nil end
+    for _, entry in ipairs(self.chain) do
+        entry.panel:free()
+    end
+    if self.unsubscribe then
+        self.unsubscribe()
+        self.unsubscribe = nil
+    end
     local API = package.loaded["minimenu/api"]
     if API and API.current == self then API.current = nil end
     if self.open_opts.on_close then
@@ -533,7 +563,11 @@ local function nextActionable(rows, from, step)
     local i = from
     for _ = 1, n do
         i = i + step
-        if i > n then i = 1 elseif i < 1 then i = n end
+        if i > n then
+            i = 1
+        elseif i < 1 then
+            i = n
+        end
         if Resolve.actionable(rows[i]) then return i end
     end
 end
@@ -571,14 +605,16 @@ function Popup:moveFocus(step)
     return true
 end
 
-function Popup:onFocusUp() return self:moveFocus(-1) end
-function Popup:onFocusDown() return self:moveFocus(1) end
+function Popup:onFocusUp()
+    return self:moveFocus(-1)
+end
+function Popup:onFocusDown()
+    return self:moveFocus(1)
+end
 
 function Popup:pressFocused(open_only)
     local k, entry = self:deepest()
-    if not self.focus_visible or not entry.focus then
-        return self:moveFocus(1)
-    end
+    if not self.focus_visible or not entry.focus then return self:moveFocus(1) end
     local row = entry.panel.rows[entry.focus]
     if not Resolve.actionable(row) then return true end
     if row.children then
@@ -595,8 +631,12 @@ function Popup:pressFocused(open_only)
     return true
 end
 
-function Popup:onPress() return self:pressFocused(false) end
-function Popup:onFocusRight() return self:pressFocused(true) end
+function Popup:onPress()
+    return self:pressFocused(false)
+end
+function Popup:onFocusRight()
+    return self:pressFocused(true)
+end
 
 function Popup:closeDeepest()
     local k = #self.chain

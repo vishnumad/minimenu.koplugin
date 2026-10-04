@@ -4,19 +4,62 @@ local calls = 0
 local function tree()
     local wifi_on = false
     return {
-        { id = "setting", icon = "appbar.settings",
-            { id = "network", text = "Network", sub_item_table = {
-                { id = "wifi", text_func = function() return "Wi-Fi connection" end,
-                  checked_func = function() return wifi_on end,
-                  callback = function() wifi_on = not wifi_on end },
-                { text = "Inline thing", callback = function() calls = calls + 1 end },
-                { text = "Disabled", enabled_func = function() return false end, callback = function() end },
-            } },
-            { id = "lazy", text = "Lazy", sub_item_table_func = function()
-                return { { text = "Deep", callback = function() end } }
-            end },
-            { id = "broken", text = "Broken", sub_item_table_func = function() error("boom") end },
-            { id = "throws", text_func = function() error("nope") end, text = "Fallback", callback = function() end },
+        {
+            id = "setting",
+            icon = "appbar.settings",
+            {
+                id = "network",
+                text = "Network",
+                sub_item_table = {
+                    {
+                        id = "wifi",
+                        text_func = function()
+                            return "Wi-Fi connection"
+                        end,
+                        checked_func = function()
+                            return wifi_on
+                        end,
+                        callback = function()
+                            wifi_on = not wifi_on
+                        end,
+                    },
+                    {
+                        text = "Inline thing",
+                        callback = function()
+                            calls = calls + 1
+                        end,
+                    },
+                    {
+                        text = "Disabled",
+                        enabled_func = function()
+                            return false
+                        end,
+                        callback = function() end,
+                    },
+                },
+            },
+            {
+                id = "lazy",
+                text = "Lazy",
+                sub_item_table_func = function()
+                    return { { text = "Deep", callback = function() end } }
+                end,
+            },
+            {
+                id = "broken",
+                text = "Broken",
+                sub_item_table_func = function()
+                    error("boom")
+                end,
+            },
+            {
+                id = "throws",
+                text_func = function()
+                    error("nope")
+                end,
+                text = "Fallback",
+                callback = function() end,
+            },
         },
         { id = "tools", icon = "appbar.tools" },
     }
@@ -52,8 +95,10 @@ describe("menupath walk", function()
 
     it("prefers ids over text when both are stored", function()
         local t = tree()
-        local node = Walk.resolve(t, { { id = "setting", text = "Settings (old translation)" },
-            { id = "network", text = "Réseau" } })
+        local node = Walk.resolve(
+            t,
+            { { id = "setting", text = "Settings (old translation)" }, { id = "network", text = "Réseau" } }
+        )
         assert.equal("Network", Walk.text(node))
     end)
 
