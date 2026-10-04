@@ -1,0 +1,8 @@
+{
+    "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+    "runtime.version": "LuaJIT",
+    "workspace.library": ["${3rd}/busted/library", "${3rd}/luassert/library"],
+    "workspace.checkThirdParty": false,
+    "diagnostics.globals": ["G_reader_settings", "fastforward_ui_events"],
+    "diagnostics.unusedLocalExclude": ["_*"]
+}
