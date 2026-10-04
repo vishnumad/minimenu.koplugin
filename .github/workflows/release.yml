@@ -46,3 +46,4 @@ jobs:
           gh release create "$TAG" minimenu.koplugin.zip \
             --target "$GITHUB_SHA" --title "$TAG" --generate-notes \
             ${{ inputs.prerelease && '--prerelease' || '' }}
+
