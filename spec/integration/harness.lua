@@ -172,8 +172,8 @@ function H.rowLabels(k)
         table.insert(
             out,
             row.separator and "--"
-            or row.placeholder and ("<" .. row.label .. ">")
-            or (row.dim and ("(" .. row.label .. ")") or row.label)
+                or row.placeholder and ("<" .. row.label .. ">")
+                or (row.dim and ("(" .. row.label .. ")") or row.label)
         )
     end
     return out

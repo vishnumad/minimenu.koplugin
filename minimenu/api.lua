@@ -13,7 +13,7 @@ function API.ensure()
     if not Store.data then
         Store.load(Kinds.get, function()
             local Defaults = require("minimenu/defaults")
-            Store.createMenu(Defaults.TITLE, Defaults.items())
+            Store.createMenu(Defaults.TITLE, Defaults.items(), { options = Defaults.options() })
         end)
     end
     require("minimenu/actions").attach(Store)

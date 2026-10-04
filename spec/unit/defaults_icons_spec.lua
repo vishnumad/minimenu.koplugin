@@ -15,7 +15,7 @@ end
 describe("default menu", function()
     it("builds fresh ids and drops unsupported actions, nested", function()
         local issue = counter()
-        local known = { toc = true, go_to = true, history = true, suspend = true }
+        local known = { filemanager = true, exit = true, suspend = true }
         local items = Defaults.build(issue, function(name)
             return known[name]
         end)
@@ -29,15 +29,35 @@ describe("default menu", function()
             end
         end
         walk(items)
-        assert.same({ "toc", "folder", "go_to", "separator", "history", "separator", "folder", "suspend" }, kinds)
+        assert.same({
+            "folder",
+            "menu_item",
+            "menu_item",
+            "separator",
+            "menu_item",
+            "menu_item",
+            "menu_item",
+            "menu_item",
+            "filemanager",
+            "separator",
+            "menu_item",
+            "menu_item",
+            "menu_item",
+            "folder",
+            "exit",
+            "suspend",
+        }, kinds)
     end)
 
     it("drops empty folders and stray separators", function()
-        local items = Defaults.build(counter(), function(name)
-            return name == "history"
+        local items = Defaults.build(counter(), function()
+            return false
         end)
-        assert.equal(1, #items)
-        assert.equal("history", next(items[1].data.action))
+        local kinds = {}
+        for _, it in ipairs(items) do
+            table.insert(kinds, it.kind)
+        end
+        assert.same({ "folder", "menu_item", "separator", "menu_item", "menu_item", "menu_item" }, kinds)
     end)
 
     it("keeps the reader-only folder out of the file browser", function()
@@ -45,7 +65,7 @@ describe("default menu", function()
             return true
         end)
         for _, it in ipairs(items) do
-            if it.kind == "folder" and it.label == "Go to" then
+            if it.kind == "folder" and it.label == "Go to ..." then
                 assert.equal("reader", it.scope)
                 return
             end

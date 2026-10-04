@@ -7,51 +7,59 @@ local _ = require("gettext")
 
 local Defaults = {}
 
-Defaults.TITLE = _("Quick menu")
+Defaults.TITLE = _("MiniMenu Default")
 
-local function act(name)
-    return { kind = "dispatcher", data = { action = { [name] = true } } }
+function Defaults.options()
+    return { show_title = false }
 end
-local function sep()
-    return { kind = "separator", data = {} }
+
+local function act(name, label, scope)
+    return { kind = "dispatcher", label = label, scope = scope, data = { action = { [name] = true } } }
+end
+local function sep(scope)
+    return { kind = "separator", scope = scope, data = {} }
 end
 local function folder(label, items, scope)
     return { kind = "folder", label = label, scope = scope, data = { items = items } }
 end
+local function entry(path, opts)
+    opts = opts or {}
+    local segs = {}
+    for i, seg in ipairs(path) do
+        segs[i] = { id = seg[1], text = seg[2] }
+    end
+    return {
+        kind = "menu_item",
+        scope = opts.scope,
+        data = { path = segs, page = opts.page or false, captured_in = "reader" },
+    }
+end
 
--- Kept short enough to fit one page on a 6" screen in the reader.
+local NAVI = { "navi", "Navigation" }
+local SETTING = { "setting", "Settings" }
+
 local function items()
     return {
-        act("toc"),
-        act("bookmarks"),
-        act("fulltext_search"),
-        -- Reader only, so the file browser doesn't show an empty folder.
-        folder(_("Go to"), {
-            act("go_to"),
-            act("skim"),
-            act("book_map"),
-            act("previous_location"),
-            act("first_page"),
-            act("last_page"),
+        folder(_("Go to ..."), {
+            entry({ NAVI, { "go_to_previous_location", "Go back to previous location" } }),
+            entry({ NAVI, { "go_to_next_location", "Go forward to next location" } }),
+            sep(),
+            entry({ NAVI, { "table_of_contents", "Table of contents" } }),
+            entry({ NAVI, { "bookmarks", "Bookmarks" } }),
+            entry({ NAVI, { "page_browser", "Page browser" } }),
         }, "reader"),
-        sep(),
-        act("history"),
-        act("favorites"),
-        sep(),
-        act("night_mode"),
-        act("show_frontlight_dialog"),
-        sep(),
+        entry({ { "typeset", "Typeset" }, { "change_font", "Font" } }, { page = true, scope = "reader" }),
+        act("filemanager", _("Close book"), "reader"),
+        sep("reader"),
+        entry({ SETTING, { "network", "Network" }, { "network_wifi", "Wi-Fi connection" } }),
+        entry({ SETTING, { "night_mode", "Night mode" } }),
+        entry({ SETTING, { "frontlight", "Frontlight" } }),
         folder(_("Device"), {
-            act("toggle_wifi"),
-            act("full_refresh"),
-            sep(),
-            act("suspend"),
-            act("restart"),
-            act("exit"),
-            sep(),
-            act("reboot"),
             act("poweroff"),
+            act("exit"),
+            act("restart"),
         }),
+        act("suspend"),
     }
 end
 
