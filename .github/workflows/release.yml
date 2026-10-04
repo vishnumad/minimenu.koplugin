@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without the leading v (e.g. 1.2.0)"
+        required: true
+      prerelease:
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      TAG: v${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate version
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid version: $VERSION"; exit 1; }
+          if gh release view "$TAG" >/dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "$TAG already exists"; exit 1
+          fi
+
+      - uses: jdx/mise-action@v5
+      - uses: leafo/gh-actions-lua@v13
+        with:
+          luaVersion: "luajit-2.1"
+      - uses: leafo/gh-actions-luarocks@v6
+      - run: luarocks install busted
+      - run: make check
+
+      - name: Build zip
+        run: git archive --format=zip --prefix=minimenu.koplugin/ -o minimenu.koplugin.zip HEAD
+
+      - name: Create tag and release
+        run: |
+          gh release create "$TAG" minimenu.koplugin.zip \
+            --target "$GITHUB_SHA" --title "$TAG" --generate-notes \
+            ${{ inputs.prerelease && '--prerelease' || '' }}

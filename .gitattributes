@@ -1,0 +1,9 @@
+.github/       export-ignore
+spec/          export-ignore
+tools/         export-ignore
+.busted        export-ignore
+.gitattributes export-ignore
+.luarc.json    export-ignore
+.stylua.toml   export-ignore
+Makefile       export-ignore
+mise.toml      export-ignore
