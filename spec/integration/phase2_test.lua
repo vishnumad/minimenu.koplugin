@@ -20,15 +20,88 @@ end)
 
 H.fm()
 
+local function buttonTexts(dialog)
+    local texts = {}
+    for _, row in ipairs(dialog.buttons) do
+        for _, b in ipairs(row) do table.insert(texts, b.text) end
+    end
+    return texts
+end
+
+local function press(dialog, id, hold)
+    local b = assert(dialog:getButtonById(id), "button " .. id)
+    local d = b.dimen
+    if hold then H.hold(d.x + d.w / 2, d.y + d.h / 2) else H.tap(d.x + d.w / 2, d.y + d.h / 2) end
+    H.drain()
+end
+
 test("long-press on a root row opens the item dialog", function()
     API.open(m.id)
     H.drain()
     H.hold(H.rowCenter(1, 1))
     assert(ItemDialog.current and top() == ItemDialog.current, "item dialog on top")
     assert(not H.popup().closed, "popup stays open underneath")
+    eq({ "Rename…", "Change icon…", "Show in: Reader and File browser", "Move…", "Add item after…",
+        "Duplicate", "Delete" }, buttonTexts(ItemDialog.current))
     H.shot("p2_item_dialog")
     H.UIManager:close(ItemDialog.current)
     H.drain()
+end)
+
+test("Move… stays open while moving up and down", function()
+    API.open(m.id)
+    H.drain()
+    local first = Store.menu(m.id).items[1]
+    local label = H.rowLabels(1)[1]
+    local mover = assert(ItemDialog.showMove(m.id, first.id))
+    H.drain()
+    eq(mover, top())
+    assert(not mover:getButtonById("up").enabled, "Up disabled at the top")
+    assert(not mover:getButtonById("out").enabled, "Out of folder disabled at top level")
+    press(mover, "down")
+    eq(mover, top(), "still open after Down")
+    eq(first.id, Store.menu(m.id).items[2].id)
+    assert(mover:getButtonById("up").enabled, "Up enabled once moved")
+    assert(mover.title:find("2 of 4"), mover.title)
+    eq(label, H.rowLabels(1)[2], "the popup underneath follows")
+    H.shot("p2_move_dialog")
+    press(mover, "down", true)
+    local items = Store.menu(m.id).items
+    eq(first.id, items[#items].id)
+    assert(not mover:getButtonById("down").enabled, "Down disabled at the bottom")
+    press(mover, "up", true)
+    eq(first.id, Store.menu(m.id).items[1].id)
+    assert(not H.popup().closed, "popup stays open underneath")
+    press(mover, "done")
+    assert(top() ~= mover, "Done closes")
+    eq(nil, ItemDialog.mover)
+end)
+
+test("Move… closes when its item is deleted", function()
+    local extra = act("history")
+    Store.editItems(m.id, function(items) table.insert(items, extra) return true end)
+    local mover = assert(ItemDialog.showMove(m.id, extra.id))
+    H.drain()
+    eq(mover, top())
+    ItemDialog.delete(m.id, extra.id)
+    H.drain()
+    assert(top() ~= mover, "closed")
+end)
+
+test("Show in offers the three scopes and sets one", function()
+    local first = Store.menu(m.id).items[1]
+    ItemDialog.chooseScope(m.id, first.id)
+    H.drain()
+    local dlg = top()
+    eq("Show in", dlg.title)
+    dlg.buttons[2][1].callback()
+    H.drain()
+    eq("reader", Store.menu(m.id).items[1].scope)
+    ItemDialog.chooseScope(m.id, first.id)
+    H.drain()
+    top().buttons[1][1].callback()
+    H.drain()
+    eq(nil, Store.menu(m.id).items[1].scope)
 end)
 
 test("editing from a flyout keeps the chain open and re-renders", function()
@@ -194,6 +267,15 @@ test("editor lists items with markers and drills into folders", function()
     H.drain()
     eq("Edit me \u{203A} Tools", list.title_bar.title_widget.text)
     H.shot("p2_editor")
+    local night = Store.menu(m.id).items[3].data.items[1]
+    local mover = assert(ItemDialog.showMove(m.id, night.id))
+    H.drain()
+    press(mover, "down")
+    eq(mover, top())
+    assert(mover.title:find("2 of %d+ in Tools"), mover.title)
+    assert(list.item_table[2].text:find("Night"), list.item_table[2].text)
+    H.shot("p2_editor_move")
+    press(mover, "done")
     list.onReturn()
     H.drain()
     eq("Edit me", list.title_bar.title_widget.text)
