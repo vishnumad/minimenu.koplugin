@@ -3,7 +3,10 @@ The default menu: seeded on first install and used as the starting items of
 every "New menu…". Only actions this device supports are included.
 ]]
 
+local Util = require("minimenu/util")
 local _ = require("gettext")
+
+local glyph = Util.utf8char
 
 local Defaults = {}
 
@@ -13,8 +16,8 @@ function Defaults.options()
     return { show_title = false }
 end
 
-local function act(name, label, scope)
-    return { kind = "dispatcher", label = label, scope = scope, data = { action = { [name] = true } } }
+local function act(name, icon, label, scope)
+    return { kind = "dispatcher", icon = icon, label = label, scope = scope, data = { action = { [name] = true } } }
 end
 local function sep(scope)
     return { kind = "separator", scope = scope, data = {} }
@@ -30,6 +33,7 @@ local function entry(path, opts)
     end
     return {
         kind = "menu_item",
+        icon = opts.icon,
         scope = opts.scope,
         data = { path = segs, page = opts.page or false, captured_in = "reader" },
     }
@@ -41,25 +45,28 @@ local SETTING = { "setting", "Settings" }
 local function items()
     return {
         folder(_("Go to ..."), {
-            entry({ NAVI, { "go_to_previous_location", "Go back to previous location" } }),
-            entry({ NAVI, { "go_to_next_location", "Go forward to next location" } }),
+            entry({ NAVI, { "go_to_previous_location", "Go back to previous location" } }, { icon = glyph(0xE74C) }), -- arrow-left
+            entry({ NAVI, { "go_to_next_location", "Go forward to next location" } }, { icon = glyph(0xE753) }), -- arrow-right
             sep(),
-            entry({ NAVI, { "table_of_contents", "Table of contents" } }),
-            entry({ NAVI, { "bookmarks", "Bookmarks" } }),
-            entry({ NAVI, { "page_browser", "Page browser" } }),
+            entry({ NAVI, { "table_of_contents", "Table of contents" } }, { icon = glyph(0xEF34) }), -- table-of-contents
+            entry({ NAVI, { "bookmarks", "Bookmarks" } }, { icon = glyph(0xE7BF) }), -- bookmark
+            entry({ NAVI, { "page_browser", "Page browser" } }, { icon = glyph(0xEC6F) }), -- view-grid
         }, "reader"),
-        entry({ { "typeset", "Typeset" }, { "change_font", "Font" } }, { page = true, scope = "reader" }),
-        act("filemanager", _("Close book"), "reader"),
+        entry(
+            { { "typeset", "Typeset" }, { "change_font", "Font" } },
+            { page = true, scope = "reader", icon = glyph(0xEDD4) } -- format-font
+        ),
+        act("filemanager", glyph(0xE905), _("Close book"), "reader"), -- exit-to-app
         sep("reader"),
-        entry({ SETTING, { "network", "Network" }, { "network_wifi", "Wi-Fi connection" } }),
-        entry({ SETTING, { "night_mode", "Night mode" } }),
-        entry({ SETTING, { "frontlight", "Frontlight" } }),
+        entry({ SETTING, { "network", "Network" }, { "network_wifi", "Wi-Fi connection" } }, { icon = glyph(0xECA8) }), -- wifi
+        entry({ SETTING, { "night_mode", "Night mode" } }, { icon = glyph(0xEC93) }), -- weather-night
+        entry({ SETTING, { "frontlight", "Frontlight" } }, { icon = glyph(0xEDE6) }), -- lightbulb-on
         folder(_("Device"), {
-            act("poweroff"),
-            act("exit"),
-            act("restart"),
+            act("poweroff", glyph(0xEB24)), -- power
+            act("exit", glyph(0xE905)), -- exit-to-app
+            act("restart", glyph(0xEE07)), -- restart
         }),
-        act("suspend"),
+        act("suspend", glyph(0xEBB1)), -- sleep
     }
 end
 
@@ -90,7 +97,8 @@ function Defaults.build(issue, supported)
         end
         local out = {}
         for i, item in ipairs(tidy) do
-            out[i] = { id = issue(), kind = item.kind, label = item.label, scope = item.scope, data = {} }
+            out[i] =
+                { id = issue(), kind = item.kind, label = item.label, icon = item.icon, scope = item.scope, data = {} }
             for k, v in pairs(item.data) do
                 out[i].data[k] = v
             end

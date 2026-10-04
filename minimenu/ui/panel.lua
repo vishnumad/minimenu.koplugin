@@ -9,7 +9,7 @@ local RowView = require("minimenu/ui/row")
 local Panel = {}
 Panel.__index = Panel
 
-local BACK = "\u{2039}" -- ‹
+local BACK = "\u{E840}" -- chevron-left
 
 --[[--
 args:
@@ -128,7 +128,7 @@ function Panel:layout(x, y, w, h)
     if self.header or self.title then
         self.title_rect = { x = inner_x, y = cy, w = inner_w, h = cfg.title_h }
         if self.header then
-            self.back_view = RowView.textWidget(BACK, cfg.chevron_face)
+            self.back_view = RowView.textWidget(BACK, cfg.icon_face)
             local back_w = cfg.icon_col
             self.title_view = RowView.textWidget(self.header, cfg.title_face, {
                 bold = true,
@@ -159,12 +159,12 @@ function Panel:layout(x, y, w, h)
         self.pager_views = {
             prev = RowView.textWidget(
                 BACK,
-                cfg.chevron_face,
+                cfg.icon_face,
                 { fgcolor = self.page > 1 and Blitbuffer.COLOR_BLACK or dim }
             ),
             next = RowView.textWidget(
                 RowView.CHEVRON,
-                cfg.chevron_face,
+                cfg.icon_face,
                 { fgcolor = self.page < #self.pages and Blitbuffer.COLOR_BLACK or dim }
             ),
             label = RowView.textWidget(("%d / %d"):format(self.page, #self.pages), cfg.face),

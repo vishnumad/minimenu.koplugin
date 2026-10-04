@@ -28,3 +28,11 @@ make fmt-check
 make test       
 make integration KOREADER_DIR=<emulator>/koreader # Add KO_PLUGINS_DISABLED=zenos to skip plugins installed in the emulator
 ```
+
+### Icons
+`minimenu/icons/glyphs.lua` is generated from KOReader's bundled symbols font:
+
+```sh
+mise exec uv@latest -- uv run --no-project --with fonttools \
+    python tools/gen_glyphs.py <koreader>/resources/fonts/nerdfonts/symbols.ttf
+```

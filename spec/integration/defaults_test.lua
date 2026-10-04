@@ -52,6 +52,52 @@ test("default menu fits on one page in the reader", function()
     H.closeReader()
 end)
 
+-- Vertical centre of the dark pixels in columns x0..x1 of rect r.
+local function inkCenter(r, x0, x1)
+    local bb = H.Screen.bb
+    local top, bot
+    for y = r.y, r.y + r.h - 1 do
+        for x = x0, x1 do
+            if bb:getPixel(x, y):getColor8().a < 128 then
+                top = top or y
+                bot = y
+                break
+            end
+        end
+    end
+    assert(top, "no ink")
+    return (top + bot) / 2
+end
+
+test("folder chevrons are vertically centred, at any text size", function()
+    H.fm()
+    for _, size in ipairs({ false, 36 }) do
+        Store.setSetting("font_size", size or nil)
+        H.API.open(Store.menus()[1].id)
+        H.drain()
+        H.shot("chevron_" .. tostring(size))
+        local panel = H.popup().chain[1].panel
+        local r = panel:rowRect(H.rowIndex(1, "Device"))
+        local center = r.y + (r.h - 1) / 2
+        local chevron = inkCenter(r, r.x + r.w - panel.cfg.trail_col - panel.cfg.pad, r.x + r.w - 1)
+        assert(
+            math.abs(chevron - center) <= 1,
+            ("size %s: chevron at %.1f, row centre %.1f"):format(size, chevron, center)
+        )
+        H.tap(H.rowCenter(1, H.rowIndex(1, "Device")))
+        local sub = H.popup().chain[2].panel
+        local t = sub.title_rect
+        -- Leave out the line under the title.
+        local above_line = { x = t.x, y = t.y, w = t.w, h = t.h - 3 * sub.cfg.line }
+        local back = inkCenter(above_line, t.x + sub.cfg.pad, t.x + sub.cfg.pad + sub.cfg.icon_size)
+        H.shot("chevron_sub_" .. tostring(size))
+        assert(math.abs(back - (t.y + (t.h - 1) / 2)) <= 1, ("size %s: back arrow off centre"):format(size))
+        H.API.close()
+        H.drain()
+    end
+    Store.setSetting("font_size", nil)
+end)
+
 test("deleting every menu does not bring the default back", function()
     Store.deleteMenu(Store.menus()[1].id)
     Store.setBackend(Store.fileBackend(H.settings_file))

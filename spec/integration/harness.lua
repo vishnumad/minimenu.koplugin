@@ -26,7 +26,9 @@ function H.setup()
         os.execute(("cp --update=none spec/front/unit/data/%s %q"):format(f, HOME .. "/books/"))
     end
     G_reader_settings:saveSetting("extra_plugin_paths", { HOME .. "/plugins" })
-    local disabled = {}
+    -- autosuspend reschedules itself on every input, and those tasks pile up
+    -- under fastforward_ui_events until each tap takes seconds.
+    local disabled = { autosuspend = true }
     for name in (os.getenv("KO_PLUGINS_DISABLED") or ""):gmatch("[^,%s]+") do
         disabled[name] = true
     end

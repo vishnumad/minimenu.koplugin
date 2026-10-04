@@ -29,10 +29,16 @@ local Popup = InputContainer:extend {
     stop_events_propagation = true,
 }
 
+--- Point size of row icons at the current text size.
+function Popup.iconPoints()
+    local font_size = Store.setting("font_size") or Store.DEFAULT_FONT_SIZE
+    return math.floor(font_size * 1.1 + 0.5)
+end
+
 --- Metrics shared by all panels, scaled by the text size setting.
 function Popup.metrics()
     local font_size = Store.setting("font_size") or Store.DEFAULT_FONT_SIZE
-    local icon_pt = math.floor(font_size * 1.1 + 0.5)
+    local icon_pt = Popup.iconPoints()
     local row_h = Screen:scaleBySize(math.floor(font_size * 2.3 + 0.5))
     local icon_size = Screen:scaleBySize(icon_pt)
     local pad = Size.padding.large
@@ -55,7 +61,6 @@ function Popup.metrics()
         face = Font:getFace("cfont", font_size),
         title_face = Font:getFace("cfont", font_size),
         icon_face = Font:getFace("cfont", icon_pt),
-        chevron_face = Font:getFace("cfont", font_size + 8),
     }
 end
 

@@ -3,7 +3,7 @@ local _ = require("gettext")
 
 local Dialogs = {}
 
---- callback(text) on Save; nothing on Cancel.
+--- callback(text) on Save; args.on_cancel() on Cancel.
 function Dialogs.input(args, callback)
     local InputDialog = require("ui/widget/inputdialog")
     local dialog
@@ -19,6 +19,7 @@ function Dialogs.input(args, callback)
                     id = "close",
                     callback = function()
                         UIManager:close(dialog)
+                        if args.on_cancel then args.on_cancel() end
                     end,
                 },
                 {

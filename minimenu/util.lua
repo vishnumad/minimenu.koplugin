@@ -35,6 +35,20 @@ function Util.iconName(s)
     return s:match("^%[icon=([%w%._%-]+)%]$")
 end
 
+function Util.utf8char(cp)
+    if cp < 0x80 then return string.char(cp) end
+    if cp < 0x800 then return string.char(0xC0 + math.floor(cp / 0x40), 0x80 + cp % 0x40) end
+    if cp < 0x10000 then
+        return string.char(0xE0 + math.floor(cp / 0x1000), 0x80 + math.floor(cp / 0x40) % 0x40, 0x80 + cp % 0x40)
+    end
+    return string.char(
+        0xF0 + math.floor(cp / 0x40000),
+        0x80 + math.floor(cp / 0x1000) % 0x40,
+        0x80 + math.floor(cp / 0x40) % 0x40,
+        0x80 + cp % 0x40
+    )
+end
+
 function Util.trim(s)
     if type(s) ~= "string" then return s end
     return (s:gsub("^%s+", ""):gsub("%s+$", ""))

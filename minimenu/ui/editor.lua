@@ -8,6 +8,7 @@ local _ = require("gettext")
 local T = require("ffi/util").template
 
 local Store = require("minimenu/store")
+local Util = require("minimenu/util")
 
 local Editor = {}
 
@@ -129,7 +130,6 @@ end
 
 function Editor.newMenu(on_created)
     local Dialogs = require("minimenu/ui/dialogs")
-    local Util = require("minimenu/util")
     Dialogs.input({ title = _("New menu"), hint = _("Menu name"), ok_text = _("Create") }, function(text)
         text = Util.trim(text)
         if text == "" then return end
@@ -140,7 +140,6 @@ end
 
 function Editor.menuSettings(menu_id)
     local Dialogs = require("minimenu/ui/dialogs")
-    local Util = require("minimenu/util")
     local function menu()
         return Store.menu(menu_id)
     end
@@ -268,7 +267,7 @@ function Editor.itemRows(menu_id, folder_id, ctx, nav)
         if info.separator then
             text = "\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}  " .. _("Separator")
         else
-            text = (info.icon and (info.icon .. "  ") or "") .. (info.label or "")
+            text = (Util.isGlyph(info.icon) and (info.icon .. "  ") or "") .. (info.label or "")
         end
         local is_folder = model.children(item) ~= nil
         local id = item.id

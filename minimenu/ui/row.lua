@@ -8,7 +8,7 @@ local Util = require("minimenu/util")
 
 local RowView = {}
 
-RowView.CHEVRON = "\u{203A}" -- ›
+RowView.CHEVRON = "\u{E841}" -- chevron-right
 RowView.CHECKED = "\u{F046}" -- check-square-o
 RowView.UNCHECKED = "\u{F096}" -- square-o
 
@@ -61,10 +61,7 @@ function RowView.build(row, cfg, cols, w)
     view.label = textWidget(row.label or "", cfg.face, { fgcolor = fg, max_width = math.max(label_w, 1) })
     if cols.icon then view.icon = RowView.iconWidget(row.icon, cfg, fg) end
     local trail = RowView.trailingText(row)
-    if trail and cols.trail then
-        local face = row.children and cfg.chevron_face or cfg.icon_face
-        view.trail = textWidget(trail, face, { fgcolor = fg })
-    end
+    if trail and cols.trail then view.trail = textWidget(trail, cfg.icon_face, { fgcolor = fg }) end
     view.cols = cols
     return view
 end
