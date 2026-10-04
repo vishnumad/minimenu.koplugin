@@ -3,6 +3,7 @@
     "runtime.version": "LuaJIT",
     "workspace.library": ["${3rd}/busted/library", "${3rd}/luassert/library"],
     "workspace.checkThirdParty": false,
+    "workspace.ignoreDir": [".lua", ".luarocks"],
     "diagnostics.globals": ["G_reader_settings", "fastforward_ui_events"],
     "diagnostics.unusedLocalExclude": ["_*"]
 }
