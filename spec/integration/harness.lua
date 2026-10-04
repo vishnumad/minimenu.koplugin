@@ -157,6 +157,29 @@ function H.top()
     return H.UIManager:getTopmostVisibleWidget() or H.UIManager._window_stack[#H.UIManager._window_stack].widget
 end
 
+function H.button(widget, text)
+    local bt = widget.buttontable or widget.button_table
+    for _, line in ipairs(bt.buttons_layout) do
+        for _, b in ipairs(line) do
+            if b.text == text then return b end
+        end
+    end
+    error("no button " .. text)
+end
+
+function H.tapButton(text, widget)
+    local d = H.button(widget or H.top(), text).dimen
+    H.tap(d.x + math.floor(d.w / 2), d.y + math.floor(d.h / 2))
+end
+
+-- The keyboard sits above an InputDialog on the window stack.
+function H.inputDialog()
+    for i = #H.UIManager._window_stack, 1, -1 do
+        local w = H.UIManager._window_stack[i].widget
+        if w.getInputText then return w end
+    end
+end
+
 function H.popup()
     return H.API.current
 end

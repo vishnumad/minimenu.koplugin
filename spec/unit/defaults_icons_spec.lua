@@ -13,51 +13,33 @@ local function counter()
 end
 
 describe("default menu", function()
-    it("builds fresh ids and drops unsupported actions, nested", function()
-        local issue = counter()
-        local known = { filemanager = true, exit = true, suspend = true }
-        local items = Defaults.build(issue, function(name)
-            return known[name]
-        end)
-        local kinds, ids = {}, {}
-        local function walk(list)
-            for _, it in ipairs(list) do
-                table.insert(kinds, it.kind == "dispatcher" and next(it.data.action) or it.kind)
-                assert.is_nil(ids[it.id])
-                ids[it.id] = true
-                if it.kind == "folder" then walk(it.data.items) end
+    local function check(items, supported, ids)
+        for i, it in ipairs(items) do
+            assert.is_nil(ids[it.id])
+            ids[it.id] = true
+            if it.kind == "dispatcher" then
+                assert.is_true(supported(next(it.data.action)))
+            elseif it.kind == "folder" then
+                assert.is_true(#it.data.items > 0)
+                check(it.data.items, supported, ids)
+            elseif it.kind == "separator" then
+                assert(i > 1 and i < #items, "separator at an end")
+                assert.are_not.equal("separator", items[i - 1].kind)
             end
         end
-        walk(items)
-        assert.same({
-            "folder",
-            "menu_item",
-            "menu_item",
-            "separator",
-            "menu_item",
-            "menu_item",
-            "menu_item",
-            "menu_item",
-            "filemanager",
-            "separator",
-            "menu_item",
-            "menu_item",
-            "menu_item",
-            "folder",
-            "exit",
-            "suspend",
-        }, kinds)
-    end)
+    end
 
-    it("drops empty folders and stray separators", function()
-        local items = Defaults.build(counter(), function()
-            return false
-        end)
-        local kinds = {}
-        for _, it in ipairs(items) do
-            table.insert(kinds, it.kind)
+    it("keeps only supported actions, with fresh ids and no empty folders or stray separators", function()
+        for _, known in ipairs({ {}, { filemanager = true, exit = true }, { suspend = true, poweroff = true } }) do
+            local supported = function(name)
+                return known[name] == true
+            end
+            check(Defaults.build(counter(), supported), supported, {})
         end
-        assert.same({ "folder", "menu_item", "separator", "menu_item", "menu_item", "menu_item" }, kinds)
+        local items = Defaults.build(counter(), function(name)
+            return name == "suspend"
+        end)
+        assert.equal("suspend", next(items[#items].data.action))
     end)
 
     it("keeps the reader-only folder out of the file browser", function()

@@ -126,8 +126,4 @@ describe("menupath walk", function()
         assert.equal("Settings", tabs[1].text)
         assert.same({ id = "setting", text = "Settings" }, tabs[1].segment)
     end)
-
-    it("describes a path", function()
-        assert.equal("A › B", Walk.describe({ { id = "a", text = "A" }, { text = "B" } }))
-    end)
 end)

@@ -88,7 +88,7 @@ function RowView.paint(bb, view, cfg, x, y, w, h, state)
     view.label:paintTo(bb, cx, vcenter(view.label))
     if view.trail then
         local tw = view.trail:getSize().w
-        view.trail:paintTo(bb, x + w - cfg.pad - math.floor((cfg.trail_col + tw) / 2), vcenter(view.trail))
+        view.trail:paintTo(bb, x + w - cfg.pad - math.floor((cfg.icon_size + tw) / 2), vcenter(view.trail))
     end
     if state and state.open then bb:invertRect(x, y, w, h) end
 end

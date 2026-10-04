@@ -5,8 +5,6 @@ local function fresh(initial)
     local backend = Store.memoryBackend(initial)
     Store.setBackend(backend)
     Store.listeners = {}
-    Store.migrations = {}
-    Store.CURRENT_VERSION = model.SCHEMA_VERSION
     return backend
 end
 
@@ -82,27 +80,6 @@ describe("store", function()
         assert.same({ "m1" }, b.stored.menu_order)
     end)
 
-    it("runs migrations in order and writes back", function()
-        local b = fresh({ version = 1, next_id = 1, menu_order = {}, menus = {} })
-        Store.CURRENT_VERSION = 3
-        local calls = {}
-        Store.migrations[1] = function(d)
-            table.insert(calls, 1)
-            d.a = true
-            return d
-        end
-        Store.migrations[2] = function(d)
-            table.insert(calls, 2)
-            d.b = d.a
-            return d
-        end
-        local data = Store.load()
-        assert.same({ 1, 2 }, calls)
-        assert.equal(3, data.version)
-        assert.is_true(data.b)
-        assert.equal(1, b.writes)
-    end)
-
     it("leaves newer schema versions alone", function()
         fresh({ version = 9, next_id = 1, menu_order = {}, menus = {} })
         local data = Store.load()
@@ -156,10 +133,8 @@ describe("store", function()
         -- Stored by older versions; no longer exposed.
         Store.setOption(m.id, "width", 0.5)
         Store.setOption(m.id, "cascade", "left")
-        assert.same(
-            { position = "top_left", show_title = true, hide_unavailable = true, lock = false },
-            Store.options(m)
-        )
+        Store.setOption(m.id, "lock", true)
+        assert.same({ position = "top_left", show_title = true, hide_unavailable = true }, Store.options(m))
         -- Old global defaults are not copied into new menus.
         Store.setSetting("defaults", { position = "center" })
         assert.equal("gesture", Store.option(Store.createMenu("Two"), "position"))

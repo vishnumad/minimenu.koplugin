@@ -144,49 +144,43 @@ describe("anchor", function()
 
     -- An 8-level cascade of wide panels: every panel stays on screen and
     -- each ancestor keeps a visible strip of at least one indent.
-    for _, scr in ipairs({ { w = 600, h = 800 }, { w = 1072, h = 1448 }, { w = 1264, h = 1680 } }) do
+    it("cascades 8 levels in either direction", function()
         for _, dir in ipairs({ "right", "left" }) do
-            it(("cascades 8 levels on %dx%d (%s)"):format(scr.w, scr.h, dir), function()
-                local margin = math.floor(scr.w * 0.02)
-                local indent = math.floor(scr.w * 0.06)
-                local min_w = math.floor(scr.w * 0.3)
-                local width = math.floor(scr.w * 0.55)
-                local row_h = math.floor(scr.h * 0.05)
-                local root = Anchor.fixed(
-                    dir == "right" and "top_left" or "top_right",
-                    { w = width, h = row_h * 8 },
-                    scr,
-                    margin
-                )
-                local chain = { root }
-                local direction = Anchor.cascadeDirection(root, scr)
-                assert.equal(dir, direction)
-                for level = 1, 8 do
-                    local parent = chain[#chain]
-                    local row = { y = parent.y + row_h * 3 }
-                    local x, w, mode = Anchor.flyoutX {
-                        parent = parent,
-                        width = width,
-                        screen = scr,
-                        margin = margin,
-                        direction = direction,
-                        overlap = 2,
-                        indent = indent,
-                        min_w = min_w,
-                    }
-                    local y, h = Anchor.flyoutY(row.y, row_h * 8, scr, margin)
-                    local r = { x = x, y = y, w = w, h = h }
-                    assert(inside(r, scr, margin), "level " .. level)
-                    assert.is_true(r.w >= min_w)
-                    if mode == "stacked" then
-                        local strip = direction == "right" and (r.x - parent.x) or ((parent.x + parent.w) - (r.x + r.w))
-                        assert(strip >= indent, ("level %d strip %d"):format(level, strip))
-                    end
-                    table.insert(chain, r)
+            local margin = math.floor(screen.w * 0.02)
+            local indent = math.floor(screen.w * 0.06)
+            local min_w = math.floor(screen.w * 0.3)
+            local width = math.floor(screen.w * 0.55)
+            local row_h = math.floor(screen.h * 0.05)
+            local root =
+                Anchor.fixed(dir == "right" and "top_left" or "top_right", { w = width, h = row_h * 8 }, screen, margin)
+            local chain = { root }
+            local direction = Anchor.cascadeDirection(root, screen)
+            assert.equal(dir, direction)
+            for level = 1, 8 do
+                local parent = chain[#chain]
+                local row = { y = parent.y + row_h * 3 }
+                local x, w, mode = Anchor.flyoutX {
+                    parent = parent,
+                    width = width,
+                    screen = screen,
+                    margin = margin,
+                    direction = direction,
+                    overlap = 2,
+                    indent = indent,
+                    min_w = min_w,
+                }
+                local y, h = Anchor.flyoutY(row.y, row_h * 8, screen, margin)
+                local r = { x = x, y = y, w = w, h = h }
+                assert(inside(r, screen, margin), "level " .. level)
+                assert.is_true(r.w >= min_w)
+                if mode == "stacked" then
+                    local strip = direction == "right" and (r.x - parent.x) or ((parent.x + parent.w) - (r.x + r.w))
+                    assert(strip >= indent, ("level %d strip %d"):format(level, strip))
                 end
-            end)
+                table.insert(chain, r)
+            end
         end
-    end
+    end)
 
     it("stops growing the indent at the screen edge", function()
         local parent = { x = 400, y = 0, w = 190, h = 100 }

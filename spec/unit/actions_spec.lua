@@ -45,13 +45,10 @@ describe("actions lifecycle", function()
         assert.is_nil(spec.filemanager)
     end)
 
-    it("rename = remove + register under the same name, new title", function()
+    it("rename keeps the action name with the new title, without a broadcast", function()
         local m = Store.createMenu("Old")
-        D.calls = {}
         Store.renameMenu(m.id, "New")
-        local name = "minimenu_open_" .. m.id
-        assert.same({ "remove " .. name, "register " .. name }, D.calls)
-        assert.equal("MiniMenu: New", D.list[name].title)
+        assert.equal("MiniMenu: New", D.list["minimenu_open_" .. m.id].title)
         assert.equal(0, #events)
     end)
 

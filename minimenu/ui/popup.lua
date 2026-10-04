@@ -42,6 +42,7 @@ function Popup.metrics()
     local row_h = Screen:scaleBySize(math.floor(font_size * 2.3 + 0.5))
     local icon_size = Screen:scaleBySize(icon_pt)
     local pad = Size.padding.large
+    local face = Font:getFace("cfont", font_size)
     return {
         row_h = row_h,
         sep_h = Screen:scaleBySize(9),
@@ -52,13 +53,14 @@ function Popup.metrics()
         line = Size.line.medium,
         focus_border = Size.border.thick * 2,
         pad = pad,
+        vpad = math.max(math.floor((row_h - face.size) / 4), 0),
         icon_size = icon_size,
         icon_col = icon_size + pad,
-        trail_col = icon_size,
+        trail_col = icon_size + pad,
         shadow = Screen:scaleBySize(3),
         margin = Screen:scaleBySize(6),
         offset = Screen:scaleBySize(12),
-        face = Font:getFace("cfont", font_size),
+        face = face,
         title_face = Font:getFace("cfont", font_size),
         icon_face = Font:getFace("cfont", icon_pt),
     }
@@ -239,7 +241,7 @@ function Popup:placeLevel(k)
         panel.header = self:breadcrumb(k)
     end
     local _, h = panel:measure(max_h)
-    local top = row_rect and (row_rect.y - cfg.border) or parent.y
+    local top = row_rect and (row_rect.y - cfg.border - cfg.vpad) or parent.y
     local y, fh = Anchor.flyoutY(top, h, self.screen, cfg.margin)
     if fh < h then
         _, h = panel:measure(fh)
@@ -441,6 +443,7 @@ end
 function Popup:onSetDimensions()
     self:close()
 end
+
 Popup.onScreenResize = Popup.onSetDimensions
 Popup.onSetRotationMode = Popup.onSetDimensions
 
@@ -528,7 +531,6 @@ end
 function Popup:onHold(_, ges)
     local k, what, index = self:hitTest(ges.pos.x, ges.pos.y)
     if not k or what ~= "row" then return true end
-    if self.options.lock then return true end
     local row = self.chain[k].panel.rows[index]
     local ItemDialog = require("minimenu/ui/item_dialog")
     if row.placeholder then
@@ -613,6 +615,7 @@ end
 function Popup:onFocusUp()
     return self:moveFocus(-1)
 end
+
 function Popup:onFocusDown()
     return self:moveFocus(1)
 end
@@ -639,6 +642,7 @@ end
 function Popup:onPress()
     return self:pressFocused(false)
 end
+
 function Popup:onFocusRight()
     return self:pressFocused(true)
 end

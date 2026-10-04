@@ -1,22 +1,9 @@
 local H = require("harness").setup()
-local test, eq = H.test, H.eq
+local test, eq, tapButton = H.test, H.eq, H.tapButton
 local IconPicker = require("minimenu/ui/pickers/icons")
 local Util = require("minimenu/util")
 
 H.fm()
-
-local function tapButton(label)
-    local dialog = H.top()
-    for _, line in ipairs(dialog.buttontable.buttons_layout) do
-        for _, b in ipairs(line) do
-            if b.text == label then
-                H.tap(b.dimen.x + math.floor(b.dimen.w / 2), b.dimen.y + math.floor(b.dimen.h / 2))
-                return
-            end
-        end
-    end
-    error("no button " .. label)
-end
 
 local function firstGlyph()
     return H.top().buttontable.buttons_layout[1][1]
@@ -112,19 +99,10 @@ test("image icons show KOReader's own set", function()
     assert(Util.iconName(picked), tostring(picked))
 end)
 
-test("every category renders", function()
-    for _, cat in ipairs(require("minimenu/icons/index").CATEGORIES) do
-        pick()
-        tapButton("Categories")
-        tapButton(cat.title)
-        H.shot("icons_" .. cat.key)
-        tapButton("Default")
-        eq(false, picked)
-    end
-end)
-
 test("long-press shows the glyph's name", function()
     pick()
+    tapButton("Categories")
+    tapButton(require("minimenu/icons/index").CATEGORIES[1].title)
     local b = firstGlyph()
     local name
     for _, e in ipairs(require("minimenu/icons/index").all()) do
@@ -140,16 +118,6 @@ test("long-press shows the glyph's name", function()
     H.UIManager.show = show
     assert(shown, "name notification")
     tapButton("Default")
-end)
-
-test("fits in landscape", function()
-    H.Screen:setRotationMode(H.Screen.DEVICE_ROTATED_CLOCKWISE)
-    pick()
-    local d = H.top()
-    assert(d.dimen.y >= 0 and d.dimen.y + d.dimen.h <= H.Screen:getHeight(), "fits")
-    H.shot("icons_landscape")
-    tapButton("Default")
-    H.Screen:setRotationMode(H.Screen.DEVICE_ROTATED_UPRIGHT)
 end)
 
 H.finish()

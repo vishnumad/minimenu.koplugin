@@ -81,7 +81,6 @@ local function optionItems(menu_id)
                 "Hide items that can't run here (for example reader actions in the file browser). When off, they are shown dimmed."
             )
         ),
-        toggle("lock", _("Lock (no long-press edit)")),
     }
 end
 

@@ -19,7 +19,6 @@ Store.DEFAULT_OPTIONS = {
     position = "gesture",
     show_title = true,
     hide_unavailable = true,
-    lock = false,
 }
 
 Store.POSITIONS = { "gesture", "center", "top_left", "top_right", "bottom_left", "bottom_right", "top", "bottom" }

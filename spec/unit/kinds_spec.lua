@@ -41,15 +41,15 @@ describe("kinds", function()
         menu_link = { good = { { menu = "m1" } }, bad = { {}, { menu = 1 } } },
         separator = { good = { {} }, bad = {} },
     }
-    for kind, c in pairs(cases) do
-        it("validates " .. kind, function()
+    it("validates each built-in kind's data", function()
+        for kind, c in pairs(cases) do
             local p = Kinds.get(kind)
-            for _, d in ipairs(c.good) do
-                assert.is_true((p.validate(d)))
+            for i, d in ipairs(c.good) do
+                assert(p.validate(d), kind .. " good " .. i)
             end
-            for _, d in ipairs(c.bad) do
-                assert.is_false((p.validate(d)))
+            for i, d in ipairs(c.bad) do
+                assert(not p.validate(d), kind .. " bad " .. i)
             end
-        end)
-    end
+        end
+    end)
 end)

@@ -167,17 +167,6 @@ test("an edit that removes the opening row closes deeper flyouts", function()
     assert(H.rowIndex(1, "Inner"), "Inner moved to top level")
 end)
 
-test("a locked menu ignores long-press", function()
-    Store.setOption(m.id, "lock", true)
-    API.open(m.id)
-    H.drain()
-    ItemDialog.current = nil
-    H.hold(H.rowCenter(1, 1))
-    eq(nil, ItemDialog.current)
-    eq(H.popup(), top())
-    Store.setOption(m.id, "lock", false)
-end)
-
 test("long-press on the placeholder offers Add item", function()
     local empty = Store.createMenu("Empty")
     API.open(empty.id)
@@ -190,33 +179,35 @@ test("long-press on the placeholder offers Add item", function()
     Store.deleteMenu(empty.id)
 end)
 
-test("Move to… lists folders except the item's own subtree", function()
+test("Move to… offers other folders, not the item's own subtree, and moves there", function()
     local MoveTo = require("minimenu/ui/pickers/move_to")
-    MoveTo.pick(m.id, tools.id)
-    H.drain()
-    local dlg = top()
-    local texts = {}
-    for _, row in ipairs(dlg.buttons) do
-        table.insert(texts, row[1].text)
-    end
-    -- Tools is at top level; Inner was moved to top level in an earlier test.
-    for _, t in ipairs(texts) do
-        assert(not t:find("Tools"), "Tools must not be a target of itself")
-    end
-    assert(texts[1]:find("Top level"), "top level listed")
-    H.UIManager:close(dlg)
-    H.drain()
-    -- model refuses a descendant move outright
     local sub = folder("Sub")
-    Store.editItems(m.id, function()
-        table.insert(tools.data.items, sub)
+    local outer = folder("Outer", { sub })
+    local other = folder("Other")
+    local mv = Store.createMenu("Move to")
+    Store.editItems(mv.id, function(items)
+        table.insert(items, outer)
+        table.insert(items, other)
         return true
     end)
-    local ok, why = Store.editItems(m.id, function(items)
-        return model.moveTo(items, tools.id, sub.id)
+    MoveTo.pick(mv.id, outer.id)
+    H.drain()
+    local texts = {}
+    for _, row in ipairs(top().buttons) do
+        table.insert(texts, row[1].text)
+    end
+    eq({ "\u{F0C9}  Top level", "\u{F07B}  Other" }, texts)
+    eq(false, top().buttons[1][1].enabled, "already at top level")
+    H.tapButton("\u{F07B}  Other")
+    local items = Store.menu(mv.id).items
+    eq(1, #items)
+    eq(outer.id, items[1].data.items[1].id)
+    local ok, why = Store.editItems(mv.id, function(list)
+        return model.moveTo(list, outer.id, sub.id)
     end)
     eq(false, ok)
     eq("descendant", why)
+    Store.deleteMenu(mv.id)
 end)
 
 test("duplicate gives fresh ids, deep", function()
@@ -280,7 +271,8 @@ test("paging: a long menu pages and swipes turn pages", function()
     local panel = p.chain[1].panel
     assert(panel:pageCount() > 1, "paged")
     local r = panel:rect()
-    H.tap(r.x + r.w - 10, r.y + r.h - 10) -- next arrow
+    local pr = panel.pager_rect
+    H.tap(pr.x + pr.w - 10, pr.y + pr.h - 10) -- next arrow
     eq(2, panel.page)
     H.swipe(r.x + 20, r.y + 60, "east")
     eq(1, panel.page)
@@ -330,12 +322,16 @@ test("main menu entry is registered under Tools", function()
     local node = Walk.resolve(Live.tree({ ui = fm }), { { id = "tools" }, { id = "minimenu" } })
     assert(node, "Tools › MiniMenu")
     local sub = assert(Walk.children(node))
-    eq("New menu…", sub[1].text)
-    local names = {}
-    for i = 2, #sub - 1 do
-        table.insert(names, sub[i].text_func())
+    local texts = {}
+    for _, it in ipairs(sub) do
+        table.insert(texts, it.text or it.text_func())
     end
-    assert(#names >= 1)
+    local expected = { "New menu…" }
+    for _, menu in ipairs(Store.menus()) do
+        table.insert(expected, menu.title)
+    end
+    table.insert(expected, "Text size: " .. (Store.setting("font_size") or Store.DEFAULT_FONT_SIZE))
+    eq(expected, texts)
 end)
 
 H.finish()

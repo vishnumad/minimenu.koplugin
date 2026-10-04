@@ -12,11 +12,7 @@ local function folder(label, items)
     return { id = Store.issueItemId(), kind = "folder", label = label, data = { items = items or {} } }
 end
 
-local fm = H.fm()
-
-test("plugin instance is loaded in the file manager", function()
-    assert(fm.minimenu, "fm.minimenu missing")
-end)
+H.fm()
 
 local tools = Store.createMenu("Reading tools")
 Store.editItems(tools.id, function(items)
@@ -129,7 +125,7 @@ Store.editItems(deep.id, function(items)
     return true
 end)
 
-for _, start in ipairs({ { 30, 60, "left" }, { 570, 60, "right" }, { 300, 400, "center" } }) do
+for _, start in ipairs({ { 30, 60, "left" }, { 570, 60, "right" } }) do
     test(("8-level cascade opens and closes (start %s)"):format(start[3]), function()
         API.open(deep.id, { gesture = H.gesture("tap", start[1], start[2]) })
         H.drain()

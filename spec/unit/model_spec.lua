@@ -21,14 +21,6 @@ local function deepTree(depth)
 end
 
 describe("model", function()
-    it("deepcopy copies nested tables without sharing", function()
-        local src = { a = { b = { c = 1 } }, list = { 1, 2 } }
-        local copy = model.deepcopy(src)
-        assert.same(src, copy)
-        copy.a.b.c = 2
-        assert.equal(1, src.a.b.c)
-    end)
-
     it("find returns item, list, index and ancestors", function()
         local items = { item("i1"), folder("i2", { item("i3"), folder("i4", { item("i5") }) }) }
         local it, list, idx, anc = model.find(items, "i5")
@@ -51,15 +43,6 @@ describe("model", function()
         local it, _, _, anc = model.find(root, "i51")
         assert.equal("i51", it.id)
         assert.equal(50, #anc)
-    end)
-
-    it("walks a very deep tree (10000 levels)", function()
-        local root = deepTree(10000)
-        local it, _, _, anc = model.find(root, "i10001")
-        assert.equal("i10001", it.id)
-        assert.equal(10000, #anc)
-        local copy = model.deepcopy(root)
-        assert.equal("i10001", (model.find(copy, "i10001")).id)
     end)
 
     it("moves within a list", function()

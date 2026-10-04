@@ -20,12 +20,7 @@ end)
 local fm = H.fm()
 
 -- What another plugin would do:
-local ok, MiniMenu = pcall(require, "minimenu/api")
-
-test("api is requirable and versioned", function()
-    assert(ok)
-    assert(MiniMenu.VERSION:match("^%d+%.%d+%.%d+$"), "semver")
-end)
+local MiniMenu = require("minimenu/api")
 
 test("list and exists", function()
     local l = MiniMenu.list()
@@ -173,10 +168,18 @@ test("gesture binding: works after rename, removed on delete", function()
 end)
 
 test("a stale binding to a deleted menu shows a notice, not another menu", function()
-    eq(false, MiniMenu.open(a.id))
-    -- ids are never reused
-    local d = Store.createMenu("Delta")
-    assert(d.id ~= a.id)
+    Store.createMenu("Delta")
+    local Notification = require("ui/widget/notification")
+    local notify = Notification.notify
+    local notice
+    Notification.notify = function(_, text)
+        notice = text
+    end
+    local opened = MiniMenu.open(a.id)
+    Notification.notify = notify
+    eq(false, opened)
+    eq("Menu no longer exists", notice)
+    eq(false, MiniMenu.isOpen())
 end)
 
 H.finish()

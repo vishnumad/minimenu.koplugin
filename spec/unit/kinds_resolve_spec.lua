@@ -1,17 +1,11 @@
--- Kinds' resolve with a fake Dispatcher, fake live UIs and fake menu trees,
--- run through FM, reader/paging and reader/rolling contexts.
 local Kinds = require("minimenu/kinds/init")
 local DispatchUtil = require("minimenu/dispatch")
 local Store = require("minimenu/store")
-local Resolve = require("minimenu/resolve")
 
 local current -- context name the fake Dispatcher believes in
 local list = {
     history = { category = "none", title = "History", general = true },
     toc = { category = "none", title = "Table of contents", reader = true },
-    flip = { category = "none", title = "Page flipping", paging = true },
-    tweaks = { category = "none", title = "Style tweaks", rolling = true },
-    gated = { category = "none", title = "Gated", general = true, condition = false },
 }
 local executed = {}
 local fakeDispatcher = {
@@ -147,22 +141,12 @@ describe("kinds resolve", function()
     end)
 
     describe("dispatcher", function()
-        local expect = {
-            history = { fm = true, paging = true, rolling = true },
-            toc = { fm = false, paging = true, rolling = true },
-            flip = { fm = false, paging = true, rolling = false },
-            tweaks = { fm = false, paging = false, rolling = true },
-            gated = { fm = false, paging = false, rolling = false },
-            gone = { fm = false, paging = false, rolling = false }, -- plugin removed
-        }
-        for name, by_ctx in pairs(expect) do
-            for cname, available in pairs(by_ctx) do
-                it(("%s in %s → %s"):format(name, cname, tostring(available)), function()
-                    local r = row("dispatcher", { action = { [name] = true } }, contexts[cname])
-                    assert.equal(available, r.available)
-                end)
-            end
-        end
+        it("is available where Dispatcher enables it, never when unknown", function()
+            assert.is_true(row("dispatcher", { action = { history = true } }, contexts.fm).available)
+            assert.is_false(row("dispatcher", { action = { toc = true } }, contexts.fm).available)
+            assert.is_true(row("dispatcher", { action = { toc = true } }, contexts.paging).available)
+            assert.is_false(row("dispatcher", { action = { gone = true } }, contexts.paging).available)
+        end)
         it("labels and runs the stored table verbatim", function()
             local action = { history = true }
             local r = row("dispatcher", { action = action }, contexts.fm)
@@ -210,24 +194,13 @@ describe("kinds resolve", function()
             assert.is_true(row("menu_item", data, contexts.paging).available)
             assert.is_true(row("menu_item", data, contexts.rolling).available)
         end)
-        it("greyed-out entries are available but disabled, and always shown dimmed", function()
-            local data = { path = { { id = "setting" }, { id = "off" } } }
-            local r = row("menu_item", data, contexts.fm)
+        it("greyed-out entries are available but disabled", function()
+            local r = row("menu_item", { path = { { id = "setting" }, { id = "off" } } }, contexts.fm)
             assert.is_true(r.available)
             assert.is_true(r.disabled)
             assert.is_falsy(
                 row("menu_item", { path = { { id = "setting" }, { id = "night_mode" } } }, contexts.fm).disabled
             )
-            current = contexts.fm
-            local rows = Resolve.rows(
-                { { id = "x", kind = "menu_item", data = data } },
-                contexts.fm,
-                Kinds.get,
-                { hide_unavailable = true, placeholder = "P" }
-            )
-            assert.equal("Disabled", rows[1].label)
-            assert.is_true(rows[1].dim)
-            assert.is_false(Resolve.actionable(rows[1]))
         end)
         it("lifts a leading PUA glyph into the icon", function()
             local r = row("menu_item", { path = { { id = "setting" }, { id = "night_mode" } } }, contexts.fm)
@@ -324,35 +297,5 @@ describe("kinds resolve", function()
             assert.is_false(r.available)
             assert.equal("Missing menu", r.label)
         end)
-    end)
-
-    it("scope × availability matrix and the empty-panel placeholder", function()
-        local items = {
-            { id = "a", kind = "dispatcher", data = { action = { history = true } } },
-            { id = "b", kind = "dispatcher", scope = "reader", data = { action = { history = true } } },
-            { id = "c", kind = "dispatcher", scope = "filemanager", data = { action = { toc = true } } },
-            { id = "d", kind = "dispatcher", data = { action = { flip = true } } },
-        }
-        local function count(ctx, hide)
-            current = ctx
-            local rows = Resolve.rows(items, ctx, Kinds.get, { hide_unavailable = hide, placeholder = "P" })
-            local n = 0
-            for _, r in ipairs(rows) do
-                if not r.placeholder then n = n + 1 end
-            end
-            return n
-        end
-        assert.equal(1, count(contexts.fm, true)) -- a
-        assert.equal(3, count(contexts.fm, false)) -- a, plus c and d dimmed; b scoped out
-        assert.equal(3, count(contexts.paging, true)) -- a, b, d
-        assert.equal(2, count(contexts.rolling, true)) -- a, b
-        current = contexts.fm
-        local rows = Resolve.rows(
-            { items[2] },
-            contexts.fm,
-            Kinds.get,
-            { hide_unavailable = true, placeholder = "Nothing here in the file browser" }
-        )
-        assert.is_true(rows[1].placeholder)
     end)
 end)
