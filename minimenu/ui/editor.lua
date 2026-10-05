@@ -117,7 +117,7 @@ function Editor.mainMenu(items)
         })
     end
     if #items > 1 then items[#items].separator = true end
-    table.insert(items, Editor.textSizeItem())
+    table.insert(items, Editor.appearanceItem())
     -- Rebuild when coming back up from a menu's page, which may have renamed
     -- or deleted it.
     items.needs_refresh = true
@@ -220,31 +220,146 @@ function Editor.menuSettings(menu_id)
     return items
 end
 
-function Editor.textSizeItem()
-    local function size()
-        return Store.setting("font_size") or Store.DEFAULT_FONT_SIZE
+local function spinItem(key, title, opts)
+    local function value()
+        local v = Store.setting(key)
+        return opts.precision and opts.precision:format(v) or v
     end
     return {
         text_func = function()
-            return T(_("Text size: %1"), size())
+            return T(_("%1: %2"), title, value())
         end,
-        help_text = _("Text size in all menus. Rows and icons grow with it."),
+        help_text = opts.help_text,
         keep_menu_open = true,
         callback = function(tm)
             local SpinWidget = require("ui/widget/spinwidget")
             UIManager:show(SpinWidget:new {
-                title_text = _("Text size"),
-                value = size(),
-                value_min = 12,
-                value_max = 36,
-                value_step = 1,
-                value_hold_step = 4,
-                default_value = Store.DEFAULT_FONT_SIZE,
+                title_text = title,
+                value = Store.setting(key),
+                value_min = opts.min,
+                value_max = opts.max,
+                value_step = opts.step or 1,
+                value_hold_step = opts.hold_step or 4,
+                precision = opts.precision,
+                default_value = Store.DEFAULT_SETTINGS[key],
+                keep_shown_on_apply = true,
                 callback = function(spin)
-                    Store.setSetting("font_size", spin.value ~= Store.DEFAULT_FONT_SIZE and spin.value or nil)
+                    Store.setSetting(key, tonumber(opts.precision and opts.precision:format(spin.value) or spin.value))
                     tm:updateItems()
                 end,
             })
+        end,
+    }
+end
+
+local function fontItem()
+    local ok, FontChooser = pcall(require, "ui/widget/fontchooser")
+    if not ok then return nil end
+    local Font = require("ui/font")
+    local FontList = require("fontlist")
+    local default
+    for file in pairs(FontList.fontinfo) do
+        if file:match("[^/]+$") == Font.fontmap.cfont then default = file end
+    end
+    return {
+        text_func = function()
+            local name = FontChooser.getFontNameText(Store.setting("font"))
+            return T(_("Font: %1"), name or _("default"))
+        end,
+        keep_menu_open = true,
+        callback = function(tm)
+            UIManager:show(FontChooser:new {
+                title = _("Font"),
+                font_file = Store.setting("font") or default,
+                default_font_file = default,
+                callback = function(file)
+                    Store.setSetting("font", file ~= default and file or nil)
+                    tm:updateItems()
+                end,
+            })
+        end,
+    }
+end
+
+local function resetAppearanceItem()
+    local keys = { "font" }
+    for key in pairs(Store.DEFAULT_SETTINGS) do
+        table.insert(keys, key)
+    end
+    return {
+        text = _("Reset appearance"),
+        keep_menu_open = true,
+        enabled_func = function()
+            for _i, key in ipairs(keys) do
+                if Store.setting(key) ~= Store.DEFAULT_SETTINGS[key] then return true end
+            end
+            return false
+        end,
+        callback = function(tm)
+            require("minimenu/ui/dialogs").confirm(
+                _("Reset all appearance settings to their defaults?"),
+                _("Reset"),
+                function()
+                    for _i, key in ipairs(keys) do
+                        Store.setSetting(key, nil)
+                    end
+                    tm:updateItems()
+                end
+            )
+        end,
+    }
+end
+
+local function appearanceItems()
+    local items = {
+        spinItem("font_size", _("Text size"), {
+            min = 12,
+            max = 36,
+            help_text = _("Text size in all menus. Rows and icons grow with it."),
+        }),
+        spinItem("row_spacing", _("Row spacing"), {
+            min = 1.5,
+            max = 4,
+            step = 0.1,
+            hold_step = 0.5,
+            precision = "%.1f",
+            help_text = _("Row height, relative to the text size."),
+        }),
+        spinItem("padding", _("Padding"), {
+            min = 0,
+            max = 40,
+            help_text = _("Space at the left and right of each row."),
+        }),
+        spinItem("edge_margin", _("Screen edge spacing"), {
+            min = 0,
+            max = 60,
+            help_text = _("Smallest space between a menu and the screen's edges."),
+        }),
+        spinItem("radius", _("Corner radius"), { min = 0, max = 30 }),
+        {
+            text = _("Shadow"),
+            checked_func = function()
+                return Store.setting("shadow")
+            end,
+            callback = function()
+                Store.setSetting("shadow", not Store.setting("shadow"))
+            end,
+        },
+    }
+    local font = fontItem()
+    if font then table.insert(items, 2, font) end
+    items[#items].separator = true
+    table.insert(items, resetAppearanceItem())
+    return items
+end
+
+function Editor.appearanceItem()
+    return {
+        text = _("Appearance"),
+        sub_item_table_func = function()
+            local items = appearanceItems()
+            require("minimenu/ui/preview").show(items)
+            return items
         end,
     }
 end

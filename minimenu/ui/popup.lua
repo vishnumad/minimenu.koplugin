@@ -6,6 +6,7 @@ root, then one flyout per open folder or link.
 
 local Device = require("device")
 local Font = require("ui/font")
+local FontList = require("fontlist")
 local Geom = require("ui/geometry")
 local GestureRange = require("ui/gesturerange")
 local InputContainer = require("ui/widget/container/inputcontainer")
@@ -31,37 +32,43 @@ local Popup = InputContainer:extend {
 
 --- Point size of row icons at the current text size.
 function Popup.iconPoints()
-    local font_size = Store.setting("font_size") or Store.DEFAULT_FONT_SIZE
-    return math.floor(font_size * 1.1 + 0.5)
+    return math.floor(Store.setting("font_size") * 1.1 + 0.5)
 end
 
---- Metrics shared by all panels, scaled by the text size setting.
+local function textFont()
+    local font = Store.setting("font")
+    if font and FontList.fontinfo[font] then return font end
+    return "cfont"
+end
+
+--- Metrics shared by all panels, from the appearance settings.
 function Popup.metrics()
-    local font_size = Store.setting("font_size") or Store.DEFAULT_FONT_SIZE
+    local font_size = Store.setting("font_size")
     local icon_pt = Popup.iconPoints()
-    local row_h = Screen:scaleBySize(math.floor(font_size * 2.3 + 0.5))
+    local row_h = Screen:scaleBySize(math.floor(font_size * Store.setting("row_spacing") + 0.5))
     local icon_size = Screen:scaleBySize(icon_pt)
-    local pad = Size.padding.large
-    local face = Font:getFace("cfont", font_size)
+    local pad = Screen:scaleBySize(Store.setting("padding"))
+    local face = Font:getFace(textFont(), font_size)
+    local shadow = Store.setting("shadow") and Screen:scaleBySize(3) or 0
     return {
         row_h = row_h,
         sep_h = Screen:scaleBySize(9),
         title_h = row_h,
         pager_h = math.floor(row_h * 0.9),
         border = Size.border.window,
-        radius = Size.radius.window,
+        -- Keeps the top and bottom corners of a one-row panel apart (Panel:uninvertCorners).
+        radius = math.min(Screen:scaleBySize(Store.setting("radius")), math.floor(row_h / 2)),
         line = Size.line.medium,
         focus_border = Size.border.thick * 2,
         pad = pad,
-        vpad = math.max(math.floor((row_h - face.size) / 4), 0),
         icon_size = icon_size,
         icon_col = icon_size + pad,
         trail_col = icon_size + pad,
-        shadow = Screen:scaleBySize(3),
-        margin = Screen:scaleBySize(6),
+        shadow = shadow,
+        margin = math.max(Screen:scaleBySize(Store.setting("edge_margin")), shadow),
         offset = Screen:scaleBySize(12),
         face = face,
-        title_face = Font:getFace("cfont", font_size),
+        title_face = face,
         icon_face = Font:getFace("cfont", icon_pt),
     }
 end
@@ -241,7 +248,7 @@ function Popup:placeLevel(k)
         panel.header = self:breadcrumb(k)
     end
     local _, h = panel:measure(max_h)
-    local top = row_rect and (row_rect.y - cfg.border - cfg.vpad) or parent.y
+    local top = row_rect and (row_rect.y - cfg.border) or parent.y
     local y, fh = Anchor.flyoutY(top, h, self.screen, cfg.margin)
     if fh < h then
         _, h = panel:measure(fh)

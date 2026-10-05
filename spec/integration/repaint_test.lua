@@ -121,6 +121,28 @@ test("closing a flyout leaves no ghost pixels", function()
     eq(pixel(px, py), after_close, ("pixel at %d,%d"):format(px, py))
 end)
 
+test("an open row stays inside large rounded corners", function()
+    Store.setSetting("radius", 30)
+    local small = Store.createMenu("Corners", { folder("A", { act("history") }) }, { options = { show_title = false } })
+    API.open(small.id, { gesture = H.gesture("tap", 40, 60) })
+    H.drain()
+    local r = H.popup().chain[1].panel:rowRect(1)
+    local corners = { { r.x, r.y }, { r.x, r.y + r.h - 1 } }
+    local before = {}
+    for i, c in ipairs(corners) do
+        before[i] = pixel(c[1], c[2])
+    end
+    H.tap(H.rowCenter(1, 1))
+    eq(2, #H.popup().chain)
+    for i, c in ipairs(corners) do
+        eq(before[i], pixel(c[1], c[2]), ("corner at %d,%d"):format(c[1], c[2]))
+    end
+    API.close()
+    H.drain()
+    Store.deleteMenu(small.id)
+    Store.setSetting("radius", nil)
+end)
+
 test("night mode toggled from inside the popup repaints consistently", function()
     G_reader_settings:makeFalse("night_mode")
     if Screen.night_mode then Screen:toggleNightMode() end

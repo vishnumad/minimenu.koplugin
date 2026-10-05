@@ -102,6 +102,13 @@ test("show_title and a fixed position apply to the popup", function()
     Store.deleteMenu(m.id)
 end)
 
+test("a missing font falls back to the UI font", function()
+    Store.setSetting("font", "/missing/font.ttf")
+    local cfont = require("ui/font"):getFace("cfont", Store.setting("font_size"))
+    eq(cfont.hash, require("minimenu/ui/popup").metrics().face.hash)
+    Store.setSetting("font", nil)
+end)
+
 local function texts(tm)
     local out = {}
     for _, it in ipairs(tm.item_table) do
@@ -142,6 +149,35 @@ local function closeSettings(tm)
     tm:closeMenu()
     H.drain()
 end
+
+test("the Appearance page shows a live preview until it is left", function()
+    local tm = openSettings("Appearance")
+    local preview = H.top()
+    eq("MiniMenuPreview", preview.name)
+    local w = preview.dimen.w
+    Store.setSetting("padding", 30)
+    assert(preview.dimen.w > w, "preview follows the settings")
+    Store.setSetting("padding", nil)
+    H.key("Back")
+    eq(false, H.UIManager:isWidgetShown(preview))
+    closeSettings(tm)
+end)
+
+test("Reset appearance asks, then restores every default", function()
+    Store.setSetting("radius", 12)
+    Store.setSetting("font", "/some/font.ttf")
+    local tm = openSettings("Appearance")
+    choose(tm, "Reset appearance")
+    local box = H.UIManager._window_stack[#H.UIManager._window_stack - 1].widget
+    assert(box.ok_callback, "confirm box below the preview")
+    eq(12, Store.setting("radius"), "not reset before confirming")
+    box.ok_callback()
+    H.UIManager:close(box)
+    H.drain()
+    eq(Store.DEFAULT_SETTINGS.radius, Store.setting("radius"))
+    eq(nil, Store.setting("font"))
+    closeSettings(tm)
+end)
 
 test("menu page: Show in action list unregisters and registers the action", function()
     local m = menuWith("Listed", act("history"))

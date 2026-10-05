@@ -23,8 +23,15 @@ Store.DEFAULT_OPTIONS = {
 
 Store.POSITIONS = { "gesture", "center", "top_left", "top_right", "bottom_left", "bottom_right", "top", "bottom" }
 
--- Global "font_size" setting; rows and icons scale with it.
-Store.DEFAULT_FONT_SIZE = 20
+-- Global appearance settings. Lengths are unscaled; "font" is a font file path.
+Store.DEFAULT_SETTINGS = {
+    font_size = 20,
+    edge_margin = 10,
+    padding = 14,
+    row_spacing = 2.2,
+    radius = 5,
+    shadow = true,
+}
 
 local function log(level, ...)
     local ok, logger = pcall(require, "logger")
@@ -200,12 +207,15 @@ end
 
 function Store.setting(key)
     local data = Store.get()
-    return data.settings and data.settings[key]
+    local v = data.settings and data.settings[key]
+    if v ~= nil then return v end
+    return Store.DEFAULT_SETTINGS[key]
 end
 
 function Store.setSetting(key, value)
     local data = Store.get()
     data.settings = data.settings or {}
+    if value == Store.DEFAULT_SETTINGS[key] then value = nil end
     data.settings[key] = value
     Store.save()
     Store.emit({ type = "settings_changed", key = key })

@@ -330,7 +330,7 @@ test("main menu entry is registered under Tools", function()
     for _, menu in ipairs(Store.menus()) do
         table.insert(expected, menu.title)
     end
-    table.insert(expected, "Text size: " .. (Store.setting("font_size") or Store.DEFAULT_FONT_SIZE))
+    table.insert(expected, "Appearance")
     eq(expected, texts)
 end)
 

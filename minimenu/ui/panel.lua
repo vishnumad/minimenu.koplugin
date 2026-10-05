@@ -66,7 +66,7 @@ end
 --- Returns outer w, h for a maximum outer height
 function Panel:measure(max_h)
     local cfg = self.cfg
-    local chrome = 2 * (cfg.border + cfg.vpad) + self:titleHeight()
+    local chrome = 2 * cfg.border + self:titleHeight()
     local content = max_h - chrome
     self.pages = self:paginate(content)
     if #self.pages > 1 then
@@ -123,7 +123,7 @@ function Panel:layout(x, y, w, h)
     self:freeViews()
     local inner_x = x + cfg.border
     local inner_w = w - 2 * cfg.border
-    local cy = y + cfg.border + cfg.vpad
+    local cy = y + cfg.border
     self.title_rect = nil
     if self.header or self.title then
         self.title_rect = { x = inner_x, y = cy, w = inner_w, h = cfg.title_h }
@@ -154,7 +154,7 @@ function Panel:layout(x, y, w, h)
     end
     self.pager_rect = nil
     if #self.pages > 1 then
-        self.pager_rect = { x = inner_x, y = y + h - cfg.border - cfg.vpad - cfg.pager_h, w = inner_w, h = cfg.pager_h }
+        self.pager_rect = { x = inner_x, y = y + h - cfg.border - cfg.pager_h, w = inner_w, h = cfg.pager_h }
         local dim = Blitbuffer.COLOR_DARK_GRAY
         self.pager_views = {
             prev = RowView.textWidget(
