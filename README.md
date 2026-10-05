@@ -3,7 +3,8 @@
 ![MiniMenu popup menu with a nested submenu over a book page](assets/header.png)
 
 Create popup menus you can open from a tap, gesture, or another
-plugin.
+plugin.  
+Inspired by the start menu in [Bookshelf](https://github.com/AndyHazz/bookshelf.koplugin).
 
 ## Install
 
