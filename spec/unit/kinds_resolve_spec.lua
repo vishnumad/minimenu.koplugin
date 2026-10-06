@@ -225,6 +225,37 @@ describe("kinds resolve", function()
             assert.is_true(r.available)
             assert.equal("Thing", r.label)
         end)
+        it("retries on tap when a submenu fails to build", function()
+            local fail, ran = true, false
+            local ctx = { name = "filemanager", ui = { menu = {} } }
+            ctx.ui.menu.tab_item_table = {
+                {
+                    id = "setting",
+                    {
+                        id = "flaky",
+                        text = "Flaky",
+                        sub_item_table_func = function()
+                            if fail then error("not ready") end
+                            return {
+                                {
+                                    id = "leaf",
+                                    text = "Leaf",
+                                    callback = function()
+                                        ran = true
+                                    end,
+                                },
+                            }
+                        end,
+                    },
+                },
+            }
+            local r = row("menu_item", { path = { { id = "setting" }, { id = "flaky" }, { id = "leaf" } } }, ctx)
+            assert.is_true(r.available)
+            assert.is_function(r.run)
+            fail = false
+            r.run()
+            assert.is_true(ran)
+        end)
         it("builds the tree at most once per context", function()
             local builds = 0
             local ui = {

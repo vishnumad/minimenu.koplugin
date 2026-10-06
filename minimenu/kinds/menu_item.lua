@@ -9,6 +9,20 @@ local function lastText(path)
     return seg and (seg.text or seg.id) or "?"
 end
 
+-- For a menu that can't be built right now: let the tap try again.
+local function retryRun(data, ui)
+    return function()
+        local Live = require("minimenu/menupath/live")
+        local node = Walk.resolve(Live.tree({ ui = ui }), data.path)
+        if not node then return end
+        if data.page then
+            Live.openPage(node)
+        else
+            Live.runLeaf(node, ui)
+        end
+    end
+end
+
 return {
     name = "menu_item",
     title = _("Menu action"),
@@ -37,23 +51,15 @@ return {
         local fallback_icon, fallback_label = Util.splitLeadingIcon(lastText(data.path))
         local row = { label = fallback_label, icon = fallback_icon or (data.page and PAGE_ICON or nil) }
         if not tree then
-            -- The menu can't be built right now: let the tap try again.
             row.available = true
-            row.run = function()
-                local node = Walk.resolve(Live.tree({ ui = ctx.ui }), data.path)
-                if not node then return end
-                if data.page then
-                    Live.openPage(node)
-                else
-                    Live.runLeaf(node, ctx.ui)
-                end
-            end
+            row.run = retryRun(data, ctx.ui)
             return row
         end
         local node, why = Walk.resolve(tree, data.path)
         if not node then
             -- A submenu that failed to build may work later.
             row.available = why == "error"
+            if row.available then row.run = retryRun(data, ctx.ui) end
             return row
         end
         local icon, label = Util.splitLeadingIcon(Walk.text(node) or fallback_label)
