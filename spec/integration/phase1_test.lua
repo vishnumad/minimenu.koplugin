@@ -325,5 +325,71 @@ test("scope pins an item to one context", function()
     eq({ "History" }, labels())
 end)
 
+test("a captured entry still resolves after the value in its label changes", function()
+    local Capture = require("minimenu/ui/pickers/menu_capture")
+    local Context = require("minimenu/context")
+    local Editor = require("minimenu/ui/editor")
+    local footer = require("apps/reader/readerui").instance.view.footer
+    local saved = footer.settings.battery_hide_threshold
+    local function label(pct)
+        return "Hide battery item when higher than: " .. pct .. "\u{202F}%"
+    end
+    footer.settings.battery_hide_threshold = 100
+
+    local got
+    Capture.pick(Context.current(), function(data)
+        got = data or false
+    end)
+    H.drain()
+    local picker = H.UIManager._window_stack[#H.UIManager._window_stack].widget
+    local function choose(text)
+        for _, it in ipairs(picker.item_table) do
+            if it.text == text then
+                it.callback(picker)
+                H.drain()
+                return
+            end
+        end
+        error("no entry " .. text)
+    end
+    choose("Settings")
+    choose("Status bar")
+    choose("Configure items")
+    choose(label(100))
+    assert(got, "captured")
+
+    local m = Store.createMenu("Values")
+    Store.editItems(m.id, function(items)
+        table.insert(items, item("menu_item", got))
+        table.insert(
+            items,
+            item("menu_item", {
+                path = { { id = "setting" }, { id = "status_bar" }, { text = "No such entry" } },
+                captured_in = "reader",
+            })
+        )
+        return true
+    end)
+
+    footer.settings.battery_hide_threshold = 50
+    API.open(m.id)
+    H.drain()
+    local rows = H.popup().chain[1].panel.rows
+    eq(label(50), rows[1].label)
+    eq(true, rows[1].available)
+    H.shot("p1_value_label")
+    API.close()
+    H.drain()
+
+    local marks = {}
+    for _, r in ipairs(Editor.itemRows(m.id, nil, Context.current(), {})) do
+        marks[r.text] = r.mandatory
+    end
+    eq("Not found in menu", marks["No such entry"])
+
+    footer.settings.battery_hide_threshold = saved
+    Store.deleteMenu(m.id)
+end)
+
 H.closeReader()
 H.finish()

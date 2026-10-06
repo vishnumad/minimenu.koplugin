@@ -256,6 +256,21 @@ describe("kinds resolve", function()
             r.run()
             assert.is_true(ran)
         end)
+        it("marks entries gone from the menu they were captured in", function()
+            local r = row(
+                "menu_item",
+                { path = { { id = "setting" }, { text = "Gone" } }, captured_in = "filemanager" },
+                contexts.fm
+            )
+            assert.is_false(r.available)
+            assert.is_true(r.missing)
+            r = row("menu_item", {
+                path = { { id = "navi" }, { id = "table_of_contents" } },
+                captured_in = "reader",
+            }, contexts.fm)
+            assert.is_false(r.available)
+            assert.is_falsy(r.missing)
+        end)
         it("builds the tree at most once per context", function()
             local builds = 0
             local ui = {

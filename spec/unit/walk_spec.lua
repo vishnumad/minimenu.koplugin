@@ -126,4 +126,51 @@ describe("menupath walk", function()
         assert.equal("Settings", tabs[1].text)
         assert.same({ id = "setting", text = "Settings" }, tabs[1].segment)
     end)
+
+    it("takes a label's prefix up to its value", function()
+        assert.equal("Items per page", Walk.prefix("Items per page: 14"))
+        assert.equal("Font size", Walk.prefix("Font size (19)"))
+        assert.equal("Wi-Fi connection", Walk.prefix("Wi-Fi connection"))
+        assert.equal("", Walk.prefix("14 items"))
+    end)
+
+    describe("labels that show a value", function()
+        local per_page, lists
+
+        local function resolveLabel(text)
+            local t = { { id = "setting", { text = "Lists", sub_item_table = lists } } }
+            return Walk.text((Walk.resolve(t, { { id = "setting" }, { text = "Lists" }, { text = text } })))
+        end
+
+        before_each(function()
+            per_page = 14
+            lists = {
+                {
+                    text_func = function()
+                        return per_page and ("Items per page: " .. per_page) or "Items per page"
+                    end,
+                    callback = function() end,
+                },
+                { text = "Items per row: 4", callback = function() end },
+            }
+        end)
+
+        it("still match after the value changes", function()
+            per_page = 20
+            assert.equal("Items per page: 20", resolveLabel("Items per page: 14"))
+        end)
+
+        it("match whether or not the label shows its value", function()
+            assert.equal("Items per page: 14", resolveLabel("Items per page"))
+            per_page = false
+            assert.equal("Items per page", resolveLabel("Items per page: 14"))
+        end)
+
+        it("need their prefix to match exactly one entry", function()
+            assert.is_nil(resolveLabel("Items per column: 4"))
+            table.insert(lists, { text = "Items per page: 5", callback = function() end })
+            per_page = 20
+            assert.is_nil(resolveLabel("Items per page: 14"))
+        end)
+    end)
 end)

@@ -44,6 +44,7 @@ function ItemDialog.marker(item, ctx)
     if info.orphan then return T(_("Needs plugin: %1"), item.kind) end
     if item.scope == "reader" then return _("Reader only") end
     if item.scope == "filemanager" then return _("File browser only") end
+    if info.missing then return _("Not found in menu") end
     if not info.available then return _("Not available here") end
 end
 

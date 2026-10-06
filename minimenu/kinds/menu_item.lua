@@ -60,6 +60,7 @@ return {
             -- A submenu that failed to build may work later.
             row.available = why == "error"
             if row.available then row.run = retryRun(data, ctx.ui) end
+            row.missing = why == "missing" and data.captured_in == ctx.name
             return row
         end
         local icon, label = Util.splitLeadingIcon(Walk.text(node) or fallback_label)

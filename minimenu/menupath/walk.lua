@@ -86,6 +86,11 @@ function Walk.isToggle(node)
     return type(node) == "table" and (type(node.checked_func) == "function" or node.checked ~= nil)
 end
 
+--- "Items per page: 14" → "Items per page"
+function Walk.prefix(text)
+    return (text:match("^[^%d:]*"):gsub("[%s%p]+$", ""))
+end
+
 function Walk.segment(node)
     local text = Walk.text(node)
     if type(node.id) == "string" and node.id ~= "" then return { id = node.id, text = text } end
@@ -104,6 +109,19 @@ function Walk.findChild(list, seg)
     for _, node in ipairs(list) do
         if matches(node, seg) then return node end
     end
+    -- A label that shows a value ("Items per page: 14") still matches after the value changes.
+    if seg.id or not seg.text then return nil end
+    local prefix = Walk.prefix(seg.text)
+    if prefix == "" then return nil end
+    local found
+    for _, node in ipairs(list) do
+        local text = Walk.text(node)
+        if text and Walk.prefix(text) == prefix then
+            if found then return nil end
+            found = node
+        end
+    end
+    return found
 end
 
 --- Returns node, or nil and "missing" | "error"

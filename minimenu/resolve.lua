@@ -35,7 +35,7 @@ function Resolve.item(item, ctx, kinds)
 end
 
 --- Editor view of an item, whatever its scope.
--- Returns { label, icon, available, orphan, separator }
+-- Returns { label, icon, available, missing, orphan, separator }
 function Resolve.inspect(item, ctx, kinds)
     local provider = kinds(item.kind)
     if not provider then
@@ -48,6 +48,7 @@ function Resolve.inspect(item, ctx, kinds)
         label = label,
         icon = (item.icon and item.icon ~= "") and item.icon or row.icon,
         available = row.available ~= false,
+        missing = row.missing,
         separator = row.separator,
     }
 end
