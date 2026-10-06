@@ -330,7 +330,12 @@ test("a captured entry still resolves after the value in its label changes", fun
     local Context = require("minimenu/context")
     local Editor = require("minimenu/ui/editor")
     local footer = require("apps/reader/readerui").instance.view.footer
-    local saved = footer.settings.battery_hide_threshold
+    -- On a fresh profile the footer's settings are its shared defaults table.
+    local original = footer.settings
+    footer.settings = {}
+    for k, v in pairs(original) do
+        footer.settings[k] = v
+    end
     local function label(pct)
         return "Hide battery item when higher than: " .. pct .. "\u{202F}%"
     end
@@ -387,7 +392,7 @@ test("a captured entry still resolves after the value in its label changes", fun
     end
     eq("Not found in menu", marks["No such entry"])
 
-    footer.settings.battery_hide_threshold = saved
+    footer.settings = original
     Store.deleteMenu(m.id)
 end)
 
