@@ -5,6 +5,23 @@ local API = {
     current = nil, -- the open popup, if any
 }
 
+local function warnReadError(path)
+    local UIManager = require("ui/uimanager")
+    local _ = require("gettext")
+    local T = require("ffi/util").template
+    UIManager:nextTick(function()
+        local InfoMessage = require("ui/widget/infomessage")
+        UIManager:show(InfoMessage:new {
+            text = T(
+                _(
+                    "MiniMenu could not read its settings file:\n%1\n\nYour menus are not loaded, and changes won't be saved until the file is fixed or removed."
+                ),
+                path
+            ),
+        })
+    end)
+end
+
 --- Idempotent; safe to call before MiniMenu's own plugin instance exists.
 function API.ensure()
     local Kinds = require("minimenu/kinds/init")
@@ -15,6 +32,7 @@ function API.ensure()
             local Defaults = require("minimenu/defaults")
             Store.createMenu(Defaults.TITLE, Defaults.items(), { options = Defaults.options() })
         end)
+        if Store.read_error then warnReadError(Store.backend.path) end
     end
     require("minimenu/actions").attach(Store)
     return Store

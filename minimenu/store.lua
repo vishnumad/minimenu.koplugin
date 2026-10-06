@@ -9,6 +9,9 @@ local model = require("minimenu/model")
 local Store = {
     data = nil,
     backend = nil,
+    -- Set when the settings exist but couldn't be read; nothing is saved then,
+    -- so the file is left for the user to recover.
+    read_error = nil,
     listeners = {},
     -- migrations[n] is a pure function(data) → data from version n to n + 1.
     migrations = {},
@@ -49,7 +52,12 @@ function Store.fileBackend(path)
         path = path,
         read = function()
             settings = LuaSettings:open(path)
-            if next(settings.data) == nil then return nil end
+            if next(settings.data) == nil then
+                -- LuaSettings returns {} for a file it can't parse, as for a missing one.
+                local lfs = require("libs/libkoreader-lfs")
+                if lfs.attributes(path, "mode") == "file" then error("could not parse " .. path) end
+                return nil
+            end
             return settings.data
         end,
         write = function(data)
@@ -105,15 +113,16 @@ end
 function Store.load(kinds, seed)
     Store.kinds = kinds or Store.kinds
     if not Store.backend then Store.backend = Store.fileBackend() end
+    Store.read_error = nil
     local ok, raw = pcall(Store.backend.read)
     if not ok then
         log("err", "could not read settings:", raw)
+        Store.read_error = tostring(raw)
         raw = nil
     end
     local data, changed
     if type(raw) ~= "table" then
         data, changed = model.empty(), false
-        -- Never seed over a file we failed to read.
         if ok and raw == nil and seed then
             Store.data = data
             local seeded, err = pcall(seed)
@@ -137,7 +146,7 @@ function Store.get()
 end
 
 function Store.save()
-    if not Store.data then return end
+    if not Store.data or Store.read_error then return end
     local ok, err = pcall(Store.backend.write, Store.data)
     -- A failed write is retried on the next FlushSettings.
     Store.dirty = not ok

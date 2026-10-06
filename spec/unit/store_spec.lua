@@ -52,7 +52,39 @@ describe("store", function()
             })
             Store.load(nil, seed)
             assert.equal(0, #Store.menus())
+            Store.createMenu("Edited")
             assert.equal(0, writes)
+            assert.truthy(Store.read_error)
+        end)
+    end)
+
+    describe("file backend", function()
+        local exists
+        before_each(function()
+            package.loaded["luasettings"] = {
+                open = function()
+                    return { data = {} }
+                end,
+            }
+            package.loaded["libs/libkoreader-lfs"] = {
+                attributes = function()
+                    return exists and "file" or nil
+                end,
+            }
+        end)
+        after_each(function()
+            package.loaded["luasettings"] = nil
+            package.loaded["libs/libkoreader-lfs"] = nil
+        end)
+
+        it("reports a file it can't parse as a read error", function()
+            exists = true
+            assert.has_error(Store.fileBackend("/x/minimenu.lua").read)
+        end)
+
+        it("reports a missing file as no settings", function()
+            exists = false
+            assert.is_nil(Store.fileBackend("/x/minimenu.lua").read())
         end)
     end)
 
