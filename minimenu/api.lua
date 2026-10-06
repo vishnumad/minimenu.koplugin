@@ -5,20 +5,26 @@ local API = {
     current = nil, -- the open popup, if any
 }
 
-local function warnReadError(path)
+local function warnReadonly(reason, path)
     local UIManager = require("ui/uimanager")
     local _ = require("gettext")
     local T = require("ffi/util").template
+    local text
+    if reason == "newer" then
+        text = _(
+            "Your MiniMenu settings were saved by a newer version of MiniMenu. Some items may be missing, and changes won't be saved. Update MiniMenu to edit your menus."
+        )
+    else
+        text = T(
+            _(
+                "MiniMenu could not read its settings file:\n%1\n\nYour menus are not loaded, and changes won't be saved until the file is fixed or removed."
+            ),
+            path
+        )
+    end
     UIManager:nextTick(function()
         local InfoMessage = require("ui/widget/infomessage")
-        UIManager:show(InfoMessage:new {
-            text = T(
-                _(
-                    "MiniMenu could not read its settings file:\n%1\n\nYour menus are not loaded, and changes won't be saved until the file is fixed or removed."
-                ),
-                path
-            ),
-        })
+        UIManager:show(InfoMessage:new { text = text })
     end)
 end
 
@@ -32,7 +38,7 @@ function API.ensure()
             local Defaults = require("minimenu/defaults")
             Store.createMenu(Defaults.TITLE, Defaults.items(), { options = Defaults.options() })
         end)
-        if Store.read_error then warnReadError(Store.backend.path) end
+        if Store.readonly then warnReadonly(Store.readonly, Store.backend.path) end
     end
     require("minimenu/actions").attach(Store)
     return Store

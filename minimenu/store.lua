@@ -9,9 +9,8 @@ local model = require("minimenu/model")
 local Store = {
     data = nil,
     backend = nil,
-    -- Set when the settings exist but couldn't be read; nothing is saved then,
-    -- so the file is left for the user to recover.
-    read_error = nil,
+    -- "unreadable" | "newer": never save over the file this session.
+    readonly = nil,
     listeners = {},
     -- migrations[n] is a pure function(data) → data from version n to n + 1.
     migrations = {},
@@ -101,9 +100,6 @@ function Store.migrate(data)
         data.version = version
         changed = true
     end
-    if version > Store.CURRENT_VERSION then
-        log("warn", "settings use a newer schema version", version, "than this MiniMenu", Store.CURRENT_VERSION)
-    end
     return data, changed
 end
 
@@ -113,11 +109,11 @@ end
 function Store.load(kinds, seed)
     Store.kinds = kinds or Store.kinds
     if not Store.backend then Store.backend = Store.fileBackend() end
-    Store.read_error = nil
+    Store.readonly = nil
     local ok, raw = pcall(Store.backend.read)
     if not ok then
         log("err", "could not read settings:", raw)
-        Store.read_error = tostring(raw)
+        Store.readonly = "unreadable"
         raw = nil
     end
     local data, changed
@@ -130,6 +126,10 @@ function Store.load(kinds, seed)
             return data
         end
     else
+        if type(raw.version) == "number" and raw.version > Store.CURRENT_VERSION then
+            log("warn", "settings use a newer schema version", raw.version, "than this MiniMenu", Store.CURRENT_VERSION)
+            Store.readonly = "newer"
+        end
         local migrated
         data, migrated = Store.migrate(raw)
         local sanitized
@@ -146,7 +146,7 @@ function Store.get()
 end
 
 function Store.save()
-    if not Store.data or Store.read_error then return end
+    if not Store.data or Store.readonly then return end
     local ok, err = pcall(Store.backend.write, Store.data)
     -- A failed write is retried on the next FlushSettings.
     Store.dirty = not ok

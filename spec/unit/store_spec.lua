@@ -54,7 +54,7 @@ describe("store", function()
             assert.equal(0, #Store.menus())
             Store.createMenu("Edited")
             assert.equal(0, writes)
-            assert.truthy(Store.read_error)
+            assert.equal("unreadable", Store.readonly)
         end)
     end)
 
@@ -113,9 +113,28 @@ describe("store", function()
     end)
 
     it("leaves newer schema versions alone", function()
-        fresh({ version = 9, next_id = 1, menu_order = {}, menus = {} })
+        local stored = {
+            version = Store.CURRENT_VERSION + 1,
+            next_id = 3,
+            menu_order = { "m1" },
+            menus = {
+                m1 = {
+                    id = "m1",
+                    title = "A",
+                    items = {
+                        { id = "i2", kind = "separator", data = {} },
+                        { id = "i3", kind = "future", data = { shape = "new" } },
+                    },
+                },
+            },
+        }
+        local b = fresh(model.deepcopy(stored))
         local data = Store.load()
-        assert.equal(9, data.version)
+        assert.equal(Store.CURRENT_VERSION + 1, data.version)
+        assert.equal("newer", Store.readonly)
+        Store.renameMenu("m1", "B")
+        assert.equal(0, b.writes)
+        assert.same(stored, b.stored)
     end)
 
     it("issues monotonic ids shared by menus and items", function()
