@@ -90,6 +90,7 @@ function API.open(menu_id, opts)
     local Popup = require("minimenu/ui/popup")
     local popup = Popup:new { menu_id = menu_id, open_opts = opts or {} }
     API.current = popup
+    require("minimenu/warm").noteOpened(popup.ctx.name, menu_id)
     UIManager:show(popup, "ui", popup:showRect())
     return true
 end

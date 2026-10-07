@@ -18,7 +18,11 @@ function MiniMenu:init()
     -- DispatcherRegisterActions is broadcast only once, so register here too;
     -- registerAction ignores names that already exist.
     self:onDispatcherRegisterActions()
-    if self.ui and self.ui.menu then self.ui.menu:registerToMainMenu(self) end
+    if self.ui and self.ui.menu then
+        self.ui.menu:registerToMainMenu(self)
+        -- FileManager has no ReaderReady.
+        if not self.ui.document then require("minimenu/warm").schedule(self.ui) end
+    end
     self:checkVersion()
 end
 
@@ -39,6 +43,17 @@ function MiniMenu:checkVersion()
             })
         end)
     end
+end
+
+-- Scheduled, not built here: widgets that register to the main menu at
+-- ReaderReady (footer, perception expander) may not have run yet.
+function MiniMenu:onReaderReady()
+    require("minimenu/warm").schedule(self.ui)
+end
+
+function MiniMenu:onCloseWidget()
+    local Warm = package.loaded["minimenu/warm"]
+    if Warm then Warm.cancel(self.ui) end
 end
 
 function MiniMenu:onDispatcherRegisterActions()

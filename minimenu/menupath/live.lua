@@ -29,6 +29,14 @@ function Live.tree(ctx)
     return ctx._tree or nil
 end
 
+function Live.built(ui)
+    return ui ~= nil and ui.menu ~= nil and ui.menu.tab_item_table ~= nil
+end
+
+function Live.warm(ui)
+    return buildTree(ui) ~= nil
+end
+
 function Live.submenus(ctx)
     ctx._submenus = ctx._submenus or {}
     return ctx._submenus
