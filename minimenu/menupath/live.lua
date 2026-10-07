@@ -29,6 +29,15 @@ function Live.tree(ctx)
     return ctx._tree or nil
 end
 
+function Live.submenus(ctx)
+    ctx._submenus = ctx._submenus or {}
+    return ctx._submenus
+end
+
+function Live.forgetSubmenus(ctx)
+    ctx._submenus = nil
+end
+
 --- Stand-in for the TouchMenu that menu callbacks receive. Fields are
 -- explicit: callbacks that probe e.g. `tm.item_table` must not get a function.
 function Live.shim(ui, host)

@@ -256,6 +256,43 @@ describe("kinds resolve", function()
             r.run()
             assert.is_true(ran)
         end)
+        it("builds a shared submenu once per context, until forgotten", function()
+            local Live = require("minimenu/menupath/live")
+            local builds = 0
+            local ctx = { name = "filemanager", ui = { menu = {} } }
+            ctx.ui.menu.tab_item_table = {
+                {
+                    id = "setting",
+                    {
+                        id = "lazy",
+                        text = "Lazy",
+                        sub_item_table_func = function()
+                            builds = builds + 1
+                            return {
+                                { id = "a", text = "A", callback = function() end },
+                                { id = "b", text = "B", callback = function() end },
+                            }
+                        end,
+                    },
+                },
+            }
+            local function resolveBoth()
+                assert.equal(
+                    "A",
+                    row("menu_item", { path = { { id = "setting" }, { id = "lazy" }, { id = "a" } } }, ctx).label
+                )
+                assert.equal(
+                    "B",
+                    row("menu_item", { path = { { id = "setting" }, { id = "lazy" }, { id = "b" } } }, ctx).label
+                )
+            end
+            resolveBoth()
+            resolveBoth()
+            assert.equal(1, builds)
+            Live.forgetSubmenus(ctx)
+            resolveBoth()
+            assert.equal(2, builds)
+        end)
         it("lets the entry's callback close and refresh the popup, if any, now or later", function()
             local tm
             local ctx = { name = "reader", sub = "paging", ui = { menu = {} } }

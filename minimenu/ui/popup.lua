@@ -369,6 +369,8 @@ end
 function Popup:refreshLevel(k)
     local before = self.chain[k].panel:dirtyRect()
     local x, y = self.chain[k].panel.x, self.chain[k].panel.y
+    -- Only called after an action ran, which may have changed the submenus it lives in.
+    require("minimenu/menupath/live").forgetSubmenus(self.ctx)
     self:buildLevel(k)
     local panel = self.chain[k].panel
     local w, h = panel:measure(

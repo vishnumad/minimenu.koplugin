@@ -93,6 +93,27 @@ describe("menupath walk", function()
         assert.is_nil((Walk.resolve(t, {})))
     end)
 
+    it("doesn't cache a submenu that failed to build", function()
+        local fail = true
+        local t = {
+            {
+                id = "setting",
+                {
+                    id = "lazy",
+                    text = "Lazy",
+                    sub_item_table_func = function()
+                        if fail then error("not ready") end
+                        return { { id = "a", text = "A", callback = function() end } }
+                    end,
+                },
+            },
+        }
+        local path, cache = { { id = "setting" }, { id = "lazy" }, { id = "a" } }, {}
+        assert.equal("error", select(2, Walk.resolve(t, path, cache)))
+        fail = false
+        assert.equal("A", Walk.text((Walk.resolve(t, path, cache))))
+    end)
+
     it("prefers ids over text when both are stored", function()
         local t = tree()
         local node = Walk.resolve(

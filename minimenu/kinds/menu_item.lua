@@ -55,7 +55,7 @@ return {
             row.run = retryRun(data, ctx.ui)
             return row
         end
-        local node, why = Walk.resolve(tree, data.path)
+        local node, why = Walk.resolve(tree, data.path, Live.submenus(ctx))
         if not node then
             -- A submenu that failed to build may work later.
             row.available = why == "error"

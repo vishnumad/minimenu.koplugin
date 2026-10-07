@@ -40,10 +40,14 @@ function Walk.isSubmenu(node)
         and (type(node.sub_item_table) == "table" or type(node.sub_item_table_func) == "function")
 end
 
---- A tab (depth 1) is itself the list of its items.
-function Walk.childrenAt(node, depth)
+--- A tab (depth 1) is itself the list of its items. Failures are not cached,
+-- so a submenu that couldn't be built is tried again.
+function Walk.childrenAt(node, depth, cache)
     if depth == 1 then return node end
-    return Walk.children(node)
+    if cache and cache[node] then return cache[node] end
+    local kids, err = Walk.children(node)
+    if cache and kids then cache[node] = kids end
+    return kids, err
 end
 
 function Walk.callback(node)
@@ -125,7 +129,7 @@ function Walk.findChild(list, seg)
 end
 
 --- Returns node, or nil and "missing" | "error"
-function Walk.resolve(tab_item_table, path)
+function Walk.resolve(tab_item_table, path, cache)
     if type(tab_item_table) ~= "table" or type(path) ~= "table" or #path == 0 then return nil, "missing" end
     local list = tab_item_table
     local node
@@ -133,7 +137,7 @@ function Walk.resolve(tab_item_table, path)
         node = Walk.findChild(list, seg)
         if not node then return nil, "missing" end
         if i < #path then
-            local kids, err = Walk.childrenAt(node, i)
+            local kids, err = Walk.childrenAt(node, i, cache)
             if not kids then
                 -- A submenu that failed to build is an error, not a missing entry.
                 return nil, err and "error" or "missing"

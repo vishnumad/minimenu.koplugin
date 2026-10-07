@@ -128,6 +128,49 @@ test("menu-entry toggle flips in place (keep_open)", function()
     eq(false, G_reader_settings:isTrue("night_mode"))
 end)
 
+test("a toggle built with a fixed check state flips in place", function()
+    local fm = require("apps/filemanager/filemanager").instance
+    local tab = require("minimenu/menupath/live").tree({ ui = fm })[1]
+    local on, builds = false, 0
+    local node = {
+        id = "minimenu_test_static",
+        text = "Static",
+        sub_item_table_func = function()
+            builds = builds + 1
+            return {
+                {
+                    id = "flip",
+                    text = "Flip",
+                    checked = on,
+                    callback = function(tm)
+                        on = not on
+                        tm:updateItems()
+                    end,
+                },
+            }
+        end,
+    }
+    table.insert(tab, node)
+    local m = Store.createMenu("Static")
+    Store.editItems(m.id, function(items)
+        table.insert(items, item("menu_item", { path = path(tab.id, node.id, "flip"), captured_in = "filemanager" }))
+        return true
+    end)
+    API.open(m.id)
+    H.drain()
+    local p = assert(H.popup())
+    eq(false, p.chain[1].panel.rows[1].checked)
+    builds = 0
+    H.tap(H.rowCenter(1, 1))
+    eq(true, not p.closed, "popup stays open")
+    eq(true, p.chain[1].panel.rows[1].checked, "submenu rebuilt after the action")
+    eq(1, builds, "rebuilt once, though the entry refreshed the menu itself")
+    API.close()
+    H.drain()
+    table.remove(tab)
+    Store.deleteMenu(m.id)
+end)
+
 test("a captured page opens in a hosted TouchMenu", function()
     API.open(quick.id)
     H.drain()
