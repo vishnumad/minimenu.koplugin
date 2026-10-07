@@ -63,6 +63,22 @@ function Panel:paginate(content_h)
     return pages
 end
 
+function Panel:naturalWidth()
+    if self.natural_w then return self.natural_w end
+    local cfg = self.cfg
+    local natural = 0
+    for _, row in ipairs(self.rows) do
+        natural = math.max(natural, RowView.naturalWidth(row, cfg, self.cols))
+    end
+    if self.title then
+        local tw = RowView.textWidget(self.title, cfg.title_face, { bold = true })
+        natural = math.max(natural, tw:getSize().w)
+        tw:free()
+    end
+    self.natural_w = natural
+    return natural
+end
+
 --- Returns outer w, h for a maximum outer height
 function Panel:measure(max_h)
     local cfg = self.cfg
@@ -80,16 +96,7 @@ function Panel:measure(max_h)
     end
     local h = chrome + content_h + (#self.pages > 1 and cfg.pager_h or 0)
 
-    local natural = 0
-    for _, row in ipairs(self.rows) do
-        natural = math.max(natural, RowView.naturalWidth(row, cfg, self.cols))
-    end
-    if self.title then
-        local tw = RowView.textWidget(self.title, cfg.title_face, { bold = true })
-        natural = math.max(natural, tw:getSize().w)
-        tw:free()
-    end
-    local w = natural + 2 * cfg.pad + 2 * cfg.border
+    local w = self:naturalWidth() + 2 * cfg.pad + 2 * cfg.border
     w = math.max(self.min_w or 0, math.min(w, self.max_w or w))
     self.w, self.h = w, h
     return w, h
