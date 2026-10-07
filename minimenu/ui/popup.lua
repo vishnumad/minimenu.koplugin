@@ -314,8 +314,21 @@ function Popup:openFlyout(k, index)
     return self.chain[k + 1]
 end
 
-function Popup:runContext()
-    return { ui = self.ctx.ui, context = self.ctx, menu_id = self.menu_id }
+function Popup:runContext(k)
+    local item_id = self.chain[k].item_id
+    local host = {
+        close = function()
+            self:close()
+        end,
+    }
+    -- Entries may refresh long after the tap, e.g. when a dialog they opened applies.
+    function host.refresh()
+        local entry = self.chain[k]
+        if self.closed or not entry or entry.item_id ~= item_id then return end
+        self:refreshLevel(k)
+        host.refreshed = true
+    end
+    return { ui = self.ctx.ui, context = self.ctx, menu_id = self.menu_id, host = host }
 end
 
 --- Closes the popup before running, so actions that replace the view (opening
@@ -325,11 +338,11 @@ function Popup:runRow(k, index)
     if not row or not row.item then return end
     local fresh = Resolve.item(row.item, self.ctx, Kinds.get)
     if not fresh or not fresh.available or fresh.disabled or type(fresh.run) ~= "function" then return end
-    local run_ctx = self:runContext()
+    local run_ctx = self:runContext(k)
     if fresh.keep_open then
         local ok, err = pcall(fresh.run, run_ctx)
         if not ok then logger.err("MiniMenu: action failed:", err) end
-        self:refreshLevel(k)
+        if not self.closed and not run_ctx.host.refreshed then self:refreshLevel(k) end
         return
     end
     self:close()

@@ -325,74 +325,160 @@ test("scope pins an item to one context", function()
     eq({ "History" }, labels())
 end)
 
-test("a captured entry still resolves after the value in its label changes", function()
+local function captureMenuEntry(...)
     local Capture = require("minimenu/ui/pickers/menu_capture")
     local Context = require("minimenu/context")
-    local Editor = require("minimenu/ui/editor")
-    local footer = require("apps/reader/readerui").instance.view.footer
-    -- On a fresh profile the footer's settings are its shared defaults table.
-    local original = footer.settings
-    footer.settings = {}
-    for k, v in pairs(original) do
-        footer.settings[k] = v
-    end
-    local function label(pct)
-        return "Hide battery item when higher than: " .. pct .. "\u{202F}%"
-    end
-    footer.settings.battery_hide_threshold = 100
-
     local got
     Capture.pick(Context.current(), function(data)
         got = data or false
     end)
     H.drain()
     local picker = H.UIManager._window_stack[#H.UIManager._window_stack].widget
-    local function choose(text)
+    for _, text in ipairs({ ... }) do
+        local found
         for _, it in ipairs(picker.item_table) do
-            if it.text == text then
-                it.callback(picker)
+            if it.text == text then found = it end
+        end
+        assert(found, "no entry " .. text)
+        found.callback(picker)
+        H.drain()
+    end
+    assert(got, "captured")
+    return got
+end
+
+-- On a fresh profile the footer's settings are its shared defaults table.
+local function withFooterSettings(fn)
+    local footer = require("apps/reader/readerui").instance.view.footer
+    local original = footer.settings
+    footer.settings = {}
+    for k, v in pairs(original) do
+        footer.settings[k] = v
+    end
+    local ok, err = pcall(fn, footer.settings)
+    footer.settings = original
+    if not ok then error(err, 0) end
+end
+
+local function batteryLabel(pct)
+    return "Hide battery item when higher than: " .. pct .. "\u{202F}%"
+end
+
+local function captureBattery()
+    return captureMenuEntry("Settings", "Status bar", "Configure items", batteryLabel(100))
+end
+
+test("a captured entry still resolves after the value in its label changes", function()
+    local Context = require("minimenu/context")
+    local Editor = require("minimenu/ui/editor")
+    withFooterSettings(function(settings)
+        settings.battery_hide_threshold = 100
+        local got = captureBattery()
+
+        local m = Store.createMenu("Values")
+        Store.editItems(m.id, function(items)
+            table.insert(items, item("menu_item", got))
+            table.insert(
+                items,
+                item("menu_item", {
+                    path = { { id = "setting" }, { id = "status_bar" }, { text = "No such entry" } },
+                    captured_in = "reader",
+                })
+            )
+            return true
+        end)
+
+        settings.battery_hide_threshold = 50
+        API.open(m.id)
+        H.drain()
+        local rows = H.popup().chain[1].panel.rows
+        eq(batteryLabel(50), rows[1].label)
+        eq(true, rows[1].available)
+        H.shot("p1_value_label")
+        API.close()
+        H.drain()
+
+        local marks = {}
+        for _, r in ipairs(Editor.itemRows(m.id, nil, Context.current(), {})) do
+            marks[r.text] = r.mandatory
+        end
+        eq("Not found in menu", marks["No such entry"])
+        Store.deleteMenu(m.id)
+    end)
+end)
+
+local function spinApply(sw, value)
+    sw.value_widget.value = value
+    sw.value_widget:update()
+    for _, line in ipairs(sw.layout) do
+        for _, b in ipairs(line) do
+            if b.text == "Apply" then
+                b.callback()
                 H.drain()
                 return
             end
         end
-        error("no entry " .. text)
     end
-    choose("Settings")
-    choose("Status bar")
-    choose("Configure items")
-    choose(label(100))
-    assert(got, "captured")
+    error("no Apply button")
+end
 
-    local m = Store.createMenu("Values")
+test("an entry that applies its value later refreshes the open popup", function()
+    withFooterSettings(function(settings)
+        settings.battery_hide_threshold = 100
+        settings.all_at_once = true
+        local m = Store.createMenu("Later")
+        Store.editItems(m.id, function(items)
+            table.insert(items, item("menu_item", captureBattery()))
+            return true
+        end)
+        API.open(m.id)
+        H.drain()
+        local p = assert(H.popup())
+        eq({ batteryLabel(100) }, labels())
+        eq(true, p.chain[1].panel.rows[1].checked)
+        H.tap(H.rowCenter(1, 1))
+        eq(true, not p.closed, "popup stays open under the spinner")
+        local sw = H.top()
+        assert(sw.value_widget, "SpinWidget shown")
+        spinApply(sw, 50)
+        eq(50, settings.battery_hide_threshold)
+        eq(true, not p.closed, "popup still open")
+        eq({ batteryLabel(50) }, labels(), "row shows the applied value")
+        H.shot("p1_applied_later")
+
+        H.tap(H.rowCenter(1, 1))
+        sw = H.top()
+        assert(sw.value_widget, "SpinWidget shown again")
+        API.close()
+        H.drain()
+        spinApply(sw, 30)
+        eq(30, settings.battery_hide_threshold, "applies after the popup closed")
+        Store.deleteMenu(m.id)
+    end)
+end)
+
+test("a toggle that closes KOReader's menu closes the popup", function()
+    local reader = require("apps/reader/readerui").instance
+    local m = Store.createMenu("Flip")
     Store.editItems(m.id, function(items)
-        table.insert(items, item("menu_item", got))
         table.insert(
             items,
-            item("menu_item", {
-                path = { { id = "setting" }, { id = "status_bar" }, { text = "No such entry" } },
-                captured_in = "reader",
-            })
+            item("menu_item", { path = path("navi", "bookmark_browsing_mode"), captured_in = "reader" })
         )
         return true
     end)
-
-    footer.settings.battery_hide_threshold = 50
+    eq(false, reader.paging.bookmark_flipping_mode and true or false)
     API.open(m.id)
     H.drain()
-    local rows = H.popup().chain[1].panel.rows
-    eq(label(50), rows[1].label)
-    eq(true, rows[1].available)
-    H.shot("p1_value_label")
-    API.close()
+    local p = assert(H.popup())
+    eq({ "Bookmark browsing mode" }, labels())
+    H.tap(H.rowCenter(1, 1))
+    eq(true, reader.paging.bookmark_flipping_mode, "flipping mode on")
+    eq(true, p.closed, "popup closed")
+    eq(nil, H.popup())
+    H.shot("p1_closes_menu")
+    reader.paging:onToggleBookmarkFlipping()
     H.drain()
-
-    local marks = {}
-    for _, r in ipairs(Editor.itemRows(m.id, nil, Context.current(), {})) do
-        marks[r.text] = r.mandatory
-    end
-    eq("Not found in menu", marks["No such entry"])
-
-    footer.settings = original
     Store.deleteMenu(m.id)
 end)
 

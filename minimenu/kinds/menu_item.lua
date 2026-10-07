@@ -11,14 +11,14 @@ end
 
 -- For a menu that can't be built right now: let the tap try again.
 local function retryRun(data, ui)
-    return function()
+    return function(run_ctx)
         local Live = require("minimenu/menupath/live")
         local node = Walk.resolve(Live.tree({ ui = ui }), data.path)
         if not node then return end
         if data.page then
             Live.openPage(node)
         else
-            Live.runLeaf(node, ui)
+            Live.runLeaf(node, ui, run_ctx and run_ctx.host)
         end
     end
 end
@@ -77,9 +77,10 @@ return {
         row.available = Walk.isLeaf(node)
         row.disabled = row.available and not Walk.enabled(node)
         row.checked = Walk.checked(node)
-        row.keep_open = row.checked ~= nil
-        row.run = function()
-            Live.runLeaf(node, ctx.ui)
+        -- Such callbacks call closeMenu themselves, sometimes only after a ConfirmBox.
+        row.keep_open = row.checked ~= nil and not node.check_callback_closes_menu
+        row.run = function(run_ctx)
+            Live.runLeaf(node, ctx.ui, run_ctx and run_ctx.host)
         end
         return row
     end,

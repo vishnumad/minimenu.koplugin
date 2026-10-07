@@ -31,24 +31,29 @@ end
 
 --- Stand-in for the TouchMenu that menu callbacks receive. Fields are
 -- explicit: callbacks that probe e.g. `tm.item_table` must not get a function.
-function Live.shim(ui)
+function Live.shim(ui, host)
     local noop = function() end
+    host = host or {}
     return {
         item_table = {},
         item_table_stack = {},
         show_parent = ui,
-        updateItems = noop,
-        closeMenu = noop,
+        updateItems = function()
+            if host.refresh then host.refresh() end
+        end,
+        closeMenu = function()
+            if host.close then host.close() end
+        end,
         backToUpperMenu = noop,
         onClose = noop,
         handleEvent = noop,
     }
 end
 
-function Live.runLeaf(node, ui)
+function Live.runLeaf(node, ui, host)
     local cb = Walk.callback(node)
     if not cb then return false end
-    cb(Live.shim(ui))
+    cb(Live.shim(ui, host))
     return true
 end
 

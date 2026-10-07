@@ -256,6 +256,45 @@ describe("kinds resolve", function()
             r.run()
             assert.is_true(ran)
         end)
+        it("lets the entry's callback close and refresh the popup, if any, now or later", function()
+            local tm
+            local ctx = { name = "reader", sub = "paging", ui = { menu = {} } }
+            ctx.ui.menu.tab_item_table = {
+                {
+                    id = "navi",
+                    {
+                        id = "later",
+                        text = "Hide battery item",
+                        checked_func = function()
+                            return true
+                        end,
+                        callback = function(t)
+                            tm = t
+                            t:updateItems()
+                        end,
+                    },
+                },
+            }
+            local data = { path = { { id = "navi" }, { id = "later" } }, captured_in = "reader" }
+            local closes, refreshes = 0, 0
+            local host = {
+                close = function()
+                    closes = closes + 1
+                end,
+                refresh = function()
+                    refreshes = refreshes + 1
+                end,
+            }
+            row("menu_item", data, ctx).run({ ui = ctx.ui, host = host })
+            assert.equal(1, refreshes)
+            tm:updateItems()
+            assert.equal(2, refreshes)
+            tm:closeMenu()
+            assert.equal(1, closes)
+
+            row("menu_item", data, ctx).run({ ui = ctx.ui })
+            tm:closeMenu()
+        end)
         it("marks entries gone from the menu they were captured in", function()
             local r = row(
                 "menu_item",
