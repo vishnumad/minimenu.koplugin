@@ -117,7 +117,16 @@ function Editor.mainMenu(items)
         })
     end
     if #items > 1 then items[#items].separator = true end
-    table.insert(items, Editor.appearanceItem())
+    local appearance = Editor.appearanceItem()
+    appearance.separator = true
+    table.insert(items, appearance)
+    table.insert(items, {
+        text = _("Check for updates"),
+        keep_menu_open = true,
+        callback = function()
+            require("minimenu/ui/update").check()
+        end,
+    })
     -- Rebuild when coming back up from a menu's page, which may have renamed
     -- or deleted it.
     items.needs_refresh = true

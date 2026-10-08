@@ -8,7 +8,14 @@ Inspired by the start menu in [Bookshelf](https://github.com/AndyHazz/bookshelf.
 
 ## Install
 
-Copy `minimenu.koplugin` into KOReader's `plugins/` folder and restart.
+Download `minimenu.koplugin.zip` from the
+[latest release](https://github.com/vishnumad/minimenu.koplugin/releases/latest),
+unzip it into KOReader's `plugins/` folder and restart.
+
+## Updating
+
+Choose **Tools › MiniMenu › Check for updates**. If you installed v1.0.0
+or v1.0.1, update by hand once, as above.
 
 ## Usage
 
@@ -31,6 +38,17 @@ make fmt-check
 make test       
 make integration KOREADER_DIR=<emulator>/koreader # Add KO_PLUGINS_DISABLED=zenos to skip plugins installed in the emulator
 ```
+
+### Releasing
+
+```sh
+make release VERSION=x.y.z
+git push origin master vx.y.z
+```
+
+`make release` runs `make check`, sets the version in `_meta.lua`, then
+commits and tags the release. Pushing the tag builds the zip and publishes
+the release.
 
 ### Icons
 `minimenu/icons/glyphs.lua` is generated from KOReader's bundled symbols font:

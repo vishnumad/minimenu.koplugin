@@ -331,6 +331,7 @@ test("main menu entry is registered under Tools", function()
         table.insert(expected, menu.title)
     end
     table.insert(expected, "Appearance")
+    table.insert(expected, "Check for updates")
     eq(expected, texts)
 end)
 

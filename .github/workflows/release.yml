@@ -1,49 +1,44 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version without the leading v (e.g. 1.2.0)"
-        required: true
-      prerelease:
-        type: boolean
-        default: false
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: write
 
 jobs:
+  check:
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs: check
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ inputs.version }}
-      TAG: v${{ inputs.version }}
+      TAG: ${{ github.ref_name }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
-
-      - name: Validate version
-        run: |
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid version: $VERSION"; exit 1; }
-          if gh release view "$TAG" >/dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
-            echo "$TAG already exists"; exit 1
-          fi
-
-      - uses: jdx/mise-action@v5
-      - uses: leafo/gh-actions-lua@v13
         with:
-          luaVersion: "luajit-2.1"
-      - uses: leafo/gh-actions-luarocks@v6
-      - run: luarocks install busted
-      - run: make check
+          fetch-depth: 0
+
+      - name: Check tag
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "invalid tag: $TAG"; exit 1; }
+          grep -qF "version = \"${TAG#v}\"" _meta.lua || { echo "_meta.lua doesn't have version ${TAG#v}"; exit 1; }
+          git merge-base --is-ancestor "$TAG^{commit}" origin/master || { echo "$TAG is not on master"; exit 1; }
 
       - name: Build zip
-        run: git archive --format=zip --prefix=minimenu.koplugin/ -o minimenu.koplugin.zip HEAD
+        run: git archive --format=zip --prefix=minimenu.koplugin/ -o minimenu.koplugin.zip "$TAG"
 
-      - name: Create tag and release
+      - name: Release notes
         run: |
-          gh release create "$TAG" minimenu.koplugin.zip \
-            --target "$GITHUB_SHA" --title "$TAG" --generate-notes \
-            ${{ inputs.prerelease && '--prerelease' || '' }}
+          prev=$(git describe --tags --abbrev=0 --exclude='*-*' "$TAG^" 2>/dev/null || true)
+          git log --no-merges --format='- %s' ${prev:+"$prev.."}"$TAG" > notes.md
+          [ -z "$prev" ] || printf '\n**Full changelog**: %s/compare/%s...%s\n' \
+            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$prev" "$TAG" >> notes.md
 
+      - name: Create release
+        run: |
+          gh release create "$TAG" minimenu.koplugin.zip --verify-tag --title "$TAG" \
+            --notes-file notes.md $([[ "$TAG" == *-* ]] && echo --prerelease)
