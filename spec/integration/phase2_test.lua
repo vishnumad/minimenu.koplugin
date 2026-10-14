@@ -297,6 +297,48 @@ test("paging: a long menu pages and swipes turn pages", function()
     Store.deleteMenu(long.id)
 end)
 
+test("an edit keeps a flyout's page, or its last page if that one is gone", function()
+    local big = folder("Big")
+    for _ = 1, 30 do
+        table.insert(big.data.items, act("history"))
+    end
+    local paged = Store.createMenu("Paged flyout")
+    Store.editItems(paged.id, function(items)
+        table.insert(items, act("favorites"))
+        table.insert(items, big)
+        return true
+    end)
+    API.open(paged.id)
+    H.drain()
+    local p = assert(H.popup())
+    H.tap(H.rowCenter(1, H.rowIndex(1, "Big")))
+    eq(2, #p.chain)
+    local pages = p.chain[2].panel:pageCount()
+    assert(pages > 2, "flyout paged")
+    p:setPage(2, 2)
+    Store.editItems(paged.id, function(items)
+        items[1].label = "Faves"
+        return true
+    end)
+    H.drain()
+    eq(2, #p.chain)
+    eq(2, p.chain[2].panel.page, "page kept")
+    p:setPage(2, pages)
+    Store.editItems(paged.id, function(items)
+        local kids = items[2].data.items
+        for i = #kids, 11, -1 do
+            table.remove(kids, i)
+        end
+        return true
+    end)
+    H.drain()
+    eq(2, #p.chain)
+    eq(p.chain[2].panel:pageCount(), p.chain[2].panel.page, "clamped to the last page")
+    p:close()
+    H.drain()
+    Store.deleteMenu(paged.id)
+end)
+
 test("editor lists items with markers and drills into folders", function()
     local Editor = require("minimenu/ui/editor")
     local list = Editor.showItems(m.id)
