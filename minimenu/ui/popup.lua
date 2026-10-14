@@ -205,6 +205,10 @@ function Popup:anchorArgs()
     return args
 end
 
+function Popup:cascadeDirection()
+    return self.direction or Anchor.cascadeDirection(self.chain[1].panel:rect(), self.screen)
+end
+
 --- The panel's parent must already be placed.
 function Popup:placeLevel(k)
     local entry = self.chain[k]
@@ -223,7 +227,7 @@ function Popup:placeLevel(k)
     local parent_entry = self.chain[k - 1]
     local parent = parent_entry.panel
     local row_rect = parent:rowRect(parent_entry.open_index)
-    if not self.direction then self.direction = Anchor.cascadeDirection(self.chain[1].panel:rect(), self.screen) end
+    self.direction = self:cascadeDirection()
     panel.header = nil
     local w = panel:measure(max_h)
     local bounds = self:widthBounds()
@@ -666,10 +670,6 @@ function Popup:onPress()
     return self:pressFocused(false)
 end
 
-function Popup:onFocusRight()
-    return self:pressFocused(true)
-end
-
 function Popup:closeDeepest()
     local k = #self.chain
     if k <= 1 then return false end
@@ -681,9 +681,20 @@ function Popup:closeDeepest()
     return true
 end
 
-function Popup:onFocusLeft()
+-- The key towards the cascade opens a flyout and the other one closes it,
+-- stacked cards included: they step the same way.
+function Popup:focusSideways(side)
+    if side == self:cascadeDirection() then return self:pressFocused(true) end
     if self:closeDeepest() then self.focus_visible = true end
     return true
+end
+
+function Popup:onFocusLeft()
+    return self:focusSideways("left")
+end
+
+function Popup:onFocusRight()
+    return self:focusSideways("right")
 end
 
 function Popup:onBack()
