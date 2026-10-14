@@ -130,5 +130,19 @@ test("treats the harness's symlinked copy as a dev install", function()
     eq(true, Update.isDevInstall(COPY))
 end)
 
+test("says so when it can't find its own folder", function()
+    local pluginDir = Update.pluginDir
+    ---@diagnostic disable-next-line: duplicate-set-field
+    Update.pluginDir = function() end
+    local ok, err = pcall(require("minimenu/ui/update").check)
+    Update.pluginDir = pluginDir
+    eq(true, ok, tostring(err))
+    H.drain()
+    local top = H.top()
+    eq(true, type(top.text) == "string" and top.text:find("plugin folder not found", 1, true) ~= nil, top.text)
+    H.UIManager:close(top)
+    H.drain()
+end)
+
 sh(("rm -rf %q %q %q"):format(PLUGINS, BUILD, ZIP))
 H.finish()

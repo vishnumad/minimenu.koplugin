@@ -66,6 +66,7 @@ end
 
 function UpdateUI.check()
     local dir = Update.pluginDir()
+    if not dir then return fail(_("Couldn't check for updates (%1)."), "plugin folder not found") end
     if Update.isDevInstall(dir) then
         Dialogs.info(_("This copy of MiniMenu is a git checkout or a symlink. Update it with git."))
         return
