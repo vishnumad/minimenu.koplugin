@@ -210,10 +210,7 @@ end
 --- Returns "row", index | "back" | "title" | "prev" | "next" | "frame" | nil
 function Panel:hit(px, py)
     if not contains(self, px, py) then return nil end
-    if self.title_rect and contains(self.title_rect, px, py) then
-        if self.header and px < self.title_rect.x + self.cfg.icon_col + self.cfg.pad then return "back" end
-        return self.header and "back" or "title"
-    end
+    if self.title_rect and contains(self.title_rect, px, py) then return self.header and "back" or "title" end
     if self.pager_rect and contains(self.pager_rect, px, py) then
         local third = self.pager_rect.w / 3
         if px < self.pager_rect.x + third then return "prev" end
