@@ -163,8 +163,8 @@ function Popup:levelItems(k)
     return items or {}
 end
 
---- (Re)build the panel at level k, keeping its page.
-function Popup:buildLevel(k)
+--- (Re)build the panel at level k, keeping its page unless given one.
+function Popup:buildLevel(k, page)
     local entry = self.chain[k] or {}
     self.chain[k] = entry
     local old = entry.panel
@@ -175,7 +175,7 @@ function Popup:buildLevel(k)
         title = k == 1 and self.options.show_title and self.menu.title or nil,
         min_w = bounds.min_w,
         max_w = bounds.max_w,
-        page = old and old.page or 1,
+        page = page or old and old.page or 1,
     }
     if old then old:free() end
 end
@@ -205,6 +205,10 @@ function Popup:anchorArgs()
     return args
 end
 
+function Popup:cascadeDirection()
+    return self.direction or Anchor.cascadeDirection(self.chain[1].panel:rect(), self.screen)
+end
+
 --- The panel's parent must already be placed.
 function Popup:placeLevel(k)
     local entry = self.chain[k]
@@ -223,7 +227,7 @@ function Popup:placeLevel(k)
     local parent_entry = self.chain[k - 1]
     local parent = parent_entry.panel
     local row_rect = parent:rowRect(parent_entry.open_index)
-    if not self.direction then self.direction = Anchor.cascadeDirection(self.chain[1].panel:rect(), self.screen) end
+    self.direction = self:cascadeDirection()
     panel.header = nil
     local w = panel:measure(max_h)
     local bounds = self:widthBounds()
@@ -396,9 +400,10 @@ function Popup:rebuild()
     self.options = Store.options(self.menu)
     local before = self:chainRect(1)
     local depth = #self.chain
-    local path = {} -- path[k]: id of the item that opened level k
+    local path, pages = {}, {} -- path[k]: id of the item that opened level k
     for k = 2, depth do
         path[k] = self.chain[k].item_id
+        pages[k] = self.chain[k].panel.page
     end
     for k = depth, 2, -1 do
         self.chain[k].panel:free()
@@ -426,7 +431,7 @@ function Popup:rebuild()
         end
         parent.open_index = found
         self.chain[k] = { row = parent.panel.rows[found], item_id = id }
-        self:buildLevel(k)
+        self:buildLevel(k, pages[k])
         self:placeLevel(k)
     end
     local last = self.chain[#self.chain]
@@ -665,10 +670,6 @@ function Popup:onPress()
     return self:pressFocused(false)
 end
 
-function Popup:onFocusRight()
-    return self:pressFocused(true)
-end
-
 function Popup:closeDeepest()
     local k = #self.chain
     if k <= 1 then return false end
@@ -680,9 +681,20 @@ function Popup:closeDeepest()
     return true
 end
 
-function Popup:onFocusLeft()
+-- The key towards the cascade opens a flyout and the other one closes it,
+-- stacked cards included: they step the same way.
+function Popup:focusSideways(side)
+    if side == self:cascadeDirection() then return self:pressFocused(true) end
     if self:closeDeepest() then self.focus_visible = true end
     return true
+end
+
+function Popup:onFocusLeft()
+    return self:focusSideways("left")
+end
+
+function Popup:onFocusRight()
+    return self:focusSideways("right")
 end
 
 function Popup:onBack()

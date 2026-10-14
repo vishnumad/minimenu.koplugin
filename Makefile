@@ -30,6 +30,7 @@ release:
 	@! git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null || { echo "v$(VERSION) already exists"; exit 1; }
 	@$(MAKE) check
 	sed -E -i.bak 's/^( *version = )"[^"]*"/\1"$(VERSION)"/' _meta.lua && rm -f _meta.lua.bak
-	git commit -q -m "Release v$(VERSION)" _meta.lua
+	sed -E -i.bak 's/^( *VERSION = )"[^"]*"/\1"$(VERSION)"/' minimenu/api.lua && rm -f minimenu/api.lua.bak
+	git commit -q -m "Release v$(VERSION)" _meta.lua minimenu/api.lua
 	git tag -a "v$(VERSION)" -m "v$(VERSION)"
 	@echo "Now push the release: git push origin master v$(VERSION)"

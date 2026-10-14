@@ -87,10 +87,13 @@ function ItemDialog.delete(menu_id, item_id)
             return model.remove(items, item_id) ~= nil
         end)
     end
-    local kids = model.children(item)
-    if kids and #kids > 0 then
+    local count = 0
+    model.walk(model.children(item), function()
+        count = count + 1
+    end)
+    if count > 0 then
         local Dialogs = require("minimenu/ui/dialogs")
-        Dialogs.confirm(T(_("Delete this folder and the %1 items in it?"), #kids), _("Delete"), doit)
+        Dialogs.confirm(T(_("Delete this folder and the %1 items in it?"), count), _("Delete"), doit)
     else
         doit()
     end
@@ -365,6 +368,11 @@ function ItemDialog.show(menu_id, item_id, ctx)
         anchor = besidePopup(),
         buttons = buttons,
     }
+    local orig_close = dialog.onCloseWidget
+    dialog.onCloseWidget = function(self)
+        if ItemDialog.current == self then ItemDialog.current = nil end
+        return orig_close(self)
+    end
     ItemDialog.current = dialog
     UIManager:show(dialog)
     return dialog
