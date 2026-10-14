@@ -65,6 +65,7 @@ test("long-press on a root row opens the item dialog", function()
     H.shot("p2_item_dialog")
     H.UIManager:close(ItemDialog.current)
     H.drain()
+    eq(nil, ItemDialog.current)
 end)
 
 test("Move… stays open while moving up and down", function()

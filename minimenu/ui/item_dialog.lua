@@ -365,6 +365,11 @@ function ItemDialog.show(menu_id, item_id, ctx)
         anchor = besidePopup(),
         buttons = buttons,
     }
+    local orig_close = dialog.onCloseWidget
+    dialog.onCloseWidget = function(self)
+        if ItemDialog.current == self then ItemDialog.current = nil end
+        return orig_close(self)
+    end
     ItemDialog.current = dialog
     UIManager:show(dialog)
     return dialog
