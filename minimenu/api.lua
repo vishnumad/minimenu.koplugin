@@ -1,7 +1,7 @@
 -- Public API, also used by other plugins.
 
 local API = {
-    VERSION = "1.0.0",
+    VERSION = "1.1.0",
     current = nil, -- the open popup, if any
 }
 
