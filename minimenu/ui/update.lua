@@ -1,3 +1,4 @@
+local Trapper = require("ui/trapper")
 local UIManager = require("ui/uimanager")
 local logger = require("logger")
 local _ = require("gettext")
@@ -13,23 +14,39 @@ local function fail(text, err)
     Dialogs.info(T(text, tostring(err)))
 end
 
-local function busy(text, fn)
+-- task runs in a subprocess, so a slow network can't freeze the UI and tapping
+-- the message kills it (busy then returns false). finish runs in this process,
+-- as Update.install loads modules into it. Must run under Trapper:wrap.
+local function busy(text, task, finish)
     local InfoMessage = require("ui/widget/infomessage")
     local message = InfoMessage:new { text = text }
     UIManager:show(message)
     UIManager:forceRePaint()
-    local ok, result, err = pcall(fn)
+    local completed, ok, result, err = Trapper:dismissableRunInSubprocess(function()
+        return pcall(task)
+    end, message)
+    if not completed then return false end
+    -- Trapper's dismiss_callback would fire again when we close the message.
+    message.dismiss_callback = nil
+    if not ok then
+        result, err = nil, result or "no response"
+    elseif result and finish then
+        ok, result, err = pcall(finish, result)
+        if not ok then
+            result, err = nil, result
+        end
+    end
     UIManager:close(message)
-    if not ok then return nil, result end
-    return result, err
+    return true, result, err
 end
 
 local function install(dir, asset)
-    local ok, err = busy(_("Downloading…"), function()
-        local data, download_err = Update.download(asset)
-        if not data then return nil, download_err end
+    local done, ok, err = busy(_("Downloading…"), function()
+        return Update.download(asset)
+    end, function(data)
         return Update.install(data, dir, asset.version)
     end)
+    if not done then return end
     if not ok then return fail(_("MiniMenu couldn't be updated (%1)."), err) end
     UIManager:askForRestart(T(_("MiniMenu was updated to v%1."), asset.version))
 end
@@ -55,13 +72,27 @@ local function offer(dir, asset, installed)
                     text = _("Update"),
                     callback = function()
                         UIManager:close(viewer)
-                        install(dir, asset)
+                        Trapper:wrap(function()
+                            install(dir, asset)
+                        end)
                     end,
                 },
             },
         },
     }
     UIManager:show(viewer)
+end
+
+local function check(dir)
+    local done, asset, err = busy(_("Checking for updates…"), Update.fetchLatest)
+    if not done then return end
+    if not asset then return fail(_("Couldn't check for updates (%1)."), err) end
+    local installed = Update.installedVersion(dir)
+    if not Update.isNewer(asset.version, installed) then
+        Dialogs.info(T(_("MiniMenu is up to date (v%1)."), installed or "?"))
+        return
+    end
+    offer(dir, asset, installed)
 end
 
 function UpdateUI.check()
@@ -74,14 +105,9 @@ function UpdateUI.check()
     -- Not runWhenOnline: it drops the callback when the online check (a DNS
     -- lookup) fails, which it does behind some DNS blockers and captive portals.
     require("ui/network/manager"):runWhenConnected(function()
-        local asset, err = busy(_("Checking for updates…"), Update.fetchLatest)
-        if not asset then return fail(_("Couldn't check for updates (%1)."), err) end
-        local installed = Update.installedVersion(dir)
-        if not Update.isNewer(asset.version, installed) then
-            Dialogs.info(T(_("MiniMenu is up to date (v%1)."), installed or "?"))
-            return
-        end
-        offer(dir, asset, installed)
+        Trapper:wrap(function()
+            check(dir)
+        end)
     end)
 end
 
