@@ -3,6 +3,8 @@ local test, eq = H.test, H.eq
 local Archiver = require("ffi/archiver")
 local lfs = require("libs/libkoreader-lfs")
 local Update = require("minimenu/update")
+local UpdateUI = require("minimenu/ui/update")
+local ffiutil = require("ffi/util")
 
 local HOME = os.getenv("KO_HOME")
 local SOURCE = os.getenv("MINIMENU_DIR")
@@ -120,6 +122,157 @@ test("names the old copy when the rollback fails too", function()
     eq("the previous version is in " .. WORK .. "/previous", err)
     eq(nil, lfs.attributes(COPY, "mode"), "copy")
     eq("old", read(WORK .. "/previous/marker"))
+end)
+
+local function shown(pred)
+    for _, w in ipairs(H.UIManager._window_stack) do
+        if pred(w.widget) then return w.widget end
+    end
+end
+
+local function message(text)
+    return shown(function(w)
+        return w.text == text
+    end)
+end
+
+-- Trapper polls its subprocess on scheduled tasks, so let real time pass.
+local function waitFor(pred)
+    local deadline = os.time() + 10
+    while true do
+        local found = pred()
+        if found then return found end
+        assert(os.time() < deadline, "timed out")
+        ffiutil.usleep(20000)
+        H.drain(1)
+    end
+end
+
+local ASSET =
+    { version = "9.9.9", url = "https://example.invalid/minimenu.koplugin.zip", sha256 = "x", notes = "notes" }
+
+local function withStubs(stubs, fn)
+    local restarted
+    local restores = {}
+    local function patch(t, k, v)
+        local old = t[k]
+        rawset(t, k, v)
+        table.insert(restores, function()
+            rawset(t, k, old)
+        end)
+    end
+    patch(Update, "pluginDir", function()
+        return COPY
+    end)
+    patch(Update, "fetchLatest", stubs.fetchLatest)
+    patch(Update, "download", stubs.download)
+    patch(require("ui/network/manager"), "runWhenConnected", function(_, callback)
+        callback()
+    end)
+    patch(H.UIManager, "askForRestart", function(_, text)
+        restarted = text
+    end)
+    local ok, err = pcall(fn, function()
+        return restarted
+    end)
+    for _, restore in ipairs(restores) do
+        restore()
+    end
+    for i = #H.UIManager._window_stack, 1, -1 do
+        H.UIManager:close(H.UIManager._window_stack[i].widget)
+    end
+    H.drain()
+    if not ok then error(err, 0) end
+end
+
+local function offered()
+    return shown(function(w)
+        return w.title == "MiniMenu v9.9.9"
+    end)
+end
+
+test("checks and downloads in a subprocess and installs here", function()
+    resetCopy()
+    local data = stage("minimenu.koplugin", "9.9.9")
+    local in_child = false
+    withStubs({
+        fetchLatest = function()
+            in_child = true
+            return ASSET
+        end,
+        download = function(asset)
+            in_child = true
+            eq(ASSET.url, asset.url)
+            return data
+        end,
+    }, function(restarted)
+        UpdateUI.check()
+        H.tapButton("Update", waitFor(offered))
+        waitFor(restarted)
+        eq(false, in_child, "ran in KOReader's process")
+        eq("MiniMenu was updated to v9.9.9.", restarted())
+        eq("9.9.9", Update.installedVersion(COPY))
+        eq(nil, message("Downloading…"), "message")
+    end)
+end)
+
+test("reports a failed check", function()
+    resetCopy()
+    withStubs({
+        fetchLatest = function()
+            return nil, "HTTP 403"
+        end,
+    }, function()
+        UpdateUI.check()
+        waitFor(function()
+            return message("Couldn't check for updates (HTTP 403).")
+        end)
+        eq(nil, message("Checking for updates…"), "message")
+    end)
+end)
+
+test("reports a failed download and keeps the copy", function()
+    resetCopy()
+    withStubs({
+        fetchLatest = function()
+            return ASSET
+        end,
+        download = function()
+            error("boom")
+        end,
+    }, function(restarted)
+        UpdateUI.check()
+        H.tapButton("Update", waitFor(offered))
+        waitFor(function()
+            return shown(function(w)
+                return type(w.text) == "string" and w.text:match("^MiniMenu couldn't be updated %(.*boom%)%.$")
+            end)
+        end)
+        eq(nil, restarted())
+        assertUnchanged()
+    end)
+end)
+
+test("tapping the message cancels the check quietly", function()
+    resetCopy()
+    withStubs({
+        fetchLatest = function()
+            ffiutil.sleep(30)
+            return ASSET
+        end,
+    }, function()
+        UpdateUI.check()
+        local busy = waitFor(function()
+            return message("Checking for updates…")
+        end)
+        H.drain()
+        local d = busy.movable.dimen
+        H.tap(d.x + math.floor(d.w / 2), d.y + math.floor(d.h / 2))
+        eq(nil, message("Checking for updates…"), "message")
+        ffiutil.usleep(300000)
+        H.drain()
+        eq(0, #H.UIManager._window_stack, "dialogs")
+    end)
 end)
 
 test("treats the harness's symlinked copy as a dev install", function()
