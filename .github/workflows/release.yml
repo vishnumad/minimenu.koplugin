@@ -26,6 +26,7 @@ jobs:
         run: |
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "invalid tag: $TAG"; exit 1; }
           grep -qF "version = \"${TAG#v}\"" _meta.lua || { echo "_meta.lua doesn't have version ${TAG#v}"; exit 1; }
+          grep -qF "VERSION = \"${TAG#v}\"" minimenu/api.lua || { echo "minimenu/api.lua doesn't have VERSION ${TAG#v}"; exit 1; }
           git merge-base --is-ancestor "$TAG^{commit}" origin/master || { echo "$TAG is not on master"; exit 1; }
 
       - name: Build zip

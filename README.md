@@ -36,7 +36,7 @@ make lint
 make fmt
 make fmt-check
 make test       
-make integration KOREADER_DIR=<emulator>/koreader # Add KO_PLUGINS_DISABLED=zenos to skip plugins installed in the emulator
+make integration KOREADER_DIR=<emulator>/koreader
 ```
 
 ### Publishing a new release
