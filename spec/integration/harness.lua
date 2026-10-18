@@ -27,8 +27,10 @@ function H.setup()
     end
     G_reader_settings:saveSetting("extra_plugin_paths", { HOME .. "/plugins" })
     -- autosuspend reschedules itself on every input, and those tasks pile up
-    -- under fastforward_ui_events until each tap takes seconds.
-    local disabled = { autosuspend = true }
+    -- under fastforward_ui_events until each tap takes seconds. storefront's
+    -- startup catalog update can land a notice on top of a test's dialog, and
+    -- zenos's tbr_index task never returns, so fastforward_ui_events hangs.
+    local disabled = { autosuspend = true, storefront = true, zenos = true }
     for name in (os.getenv("KO_PLUGINS_DISABLED") or ""):gmatch("[^,%s]+") do
         disabled[name] = true
     end
