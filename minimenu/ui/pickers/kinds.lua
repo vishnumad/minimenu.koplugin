@@ -4,6 +4,16 @@ local _ = require("gettext")
 
 local KindPicker = {}
 
+local function chooseKind(title, filter, callback)
+    local Dialogs = require("minimenu/ui/dialogs")
+    local Kinds = require("minimenu/kinds/init")
+    local choices = {}
+    for _i, provider in ipairs(Kinds.list(filter)) do
+        table.insert(choices, { text = provider.title or provider.name, value = provider })
+    end
+    Dialogs.choose({ title = title, choices = choices }, callback)
+end
+
 --[[--
 target:
     menu_id
@@ -12,14 +22,19 @@ target:
     ctx         popup or editor context
 ]]
 function KindPicker.add(target)
-    local Dialogs = require("minimenu/ui/dialogs")
-    local Kinds = require("minimenu/kinds/init")
-    local choices = {}
-    for _i, provider in ipairs(Kinds.list()) do
-        table.insert(choices, { text = provider.title or provider.name, value = provider })
-    end
-    Dialogs.choose({ title = _("Add item"), choices = choices }, function(provider)
+    chooseKind(_("Add item"), nil, function(provider)
         KindPicker.runPick(provider, target)
+    end)
+end
+
+--- Choose and pick an action kind. callback(kind, data); `target` as for add.
+function KindPicker.pickAction(title, target, callback)
+    chooseKind(title, function(p)
+        return p.action
+    end, function(provider)
+        KindPicker.pick(provider, target, function(data)
+            callback(provider.name, data)
+        end)
     end)
 end
 
@@ -34,10 +49,23 @@ local function contextFor(target)
     }
 end
 
+--- Runs the provider's pick. on_data(data, label, icon, opts) once, unless cancelled.
+function KindPicker.pick(provider, target, on_data)
+    local finished = false
+    local ok, err = pcall(provider.pick, contextFor(target), function(data, label, icon, opts)
+        if finished then return end
+        finished = true
+        if data then on_data(data, label, icon, opts) end
+    end)
+    if not ok then
+        require("logger").err("MiniMenu: picking", provider.name, "failed:", err)
+        require("minimenu/ui/dialogs").info(_("Could not add this item."))
+    end
+end
+
 function KindPicker.runPick(provider, target)
     local Store = require("minimenu/store")
     local model = require("minimenu/model")
-    local finished = false
     local function insert(item)
         Store.editItems(target.menu_id, function(items)
             if target.after_id then
@@ -52,10 +80,7 @@ function KindPicker.runPick(provider, target)
             return true
         end)
     end
-    local ok, err = pcall(provider.pick, contextFor(target), function(data, label, icon, opts)
-        if finished then return end
-        finished = true
-        if not data then return end
+    KindPicker.pick(provider, target, function(data, label, icon, opts)
         local item = { id = Store.issueItemId(), kind = provider.name, data = data }
         if label and label ~= "" then item.label = label end
         if icon and icon ~= "" then item.icon = icon end
@@ -74,10 +99,6 @@ function KindPicker.runPick(provider, target)
         end
         insert(item)
     end)
-    if not ok then
-        require("logger").err("MiniMenu: picking", provider.name, "failed:", err)
-        require("minimenu/ui/dialogs").info(_("Could not add this item."))
-    end
 end
 
 return KindPicker

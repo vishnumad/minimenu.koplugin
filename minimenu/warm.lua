@@ -70,6 +70,19 @@ function Warm.needsTree(roots, scope)
             table.insert(queue, id)
         end
     end
+    -- Returns true when the action needs the tree.
+    local function visit(action)
+        if not action then return false end
+        local kind, data = action.kind, action.data
+        if kind == "menu_item" then return true end
+        if kind == "menu_link" and type(data.menu) == "string" then
+            enqueue(data.menu)
+        elseif kind == "dispatcher" then
+            for id in pairs(boundIds({}, data.action)) do
+                enqueue(id)
+            end
+        end
+    end
     for id in pairs(roots) do
         enqueue(id)
     end
@@ -79,15 +92,7 @@ function Warm.needsTree(roots, scope)
         while #stack > 0 do
             for _, item in ipairs(table.remove(stack)) do
                 if not item.scope or item.scope == scope then
-                    if item.kind == "menu_item" then return true end
-                    local data = item.data
-                    if item.kind == "menu_link" and type(data.menu) == "string" then
-                        enqueue(data.menu)
-                    elseif item.kind == "dispatcher" then
-                        for id in pairs(boundIds({}, data.action)) do
-                            enqueue(id)
-                        end
-                    end
+                    if visit(item) or visit(item.secondary) then return true end
                     local kids = model.children(item)
                     if kids then table.insert(stack, kids) end
                 end

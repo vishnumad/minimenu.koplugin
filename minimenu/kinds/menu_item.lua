@@ -27,6 +27,7 @@ return {
     name = "menu_item",
     title = _("Menu action"),
     order = 20,
+    action = true,
 
     pick = function(ctx, done)
         require("minimenu/ui/pickers/menu_capture").pick(ctx, function(data, icon)
@@ -83,12 +84,5 @@ return {
             Live.runLeaf(node, ctx.ui, run_ctx and run_ctx.host)
         end
         return row
-    end,
-
-    describe = function(item)
-        local where = item.data.captured_in == "reader" and _("Reader menu") or _("File browser menu")
-        local text = where .. ": " .. Walk.describe(item.data.path)
-        if item.data.page then text = text .. " " .. _("(page)") end
-        return text
     end,
 }

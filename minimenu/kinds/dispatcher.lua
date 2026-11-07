@@ -8,6 +8,7 @@ return {
     name = "dispatcher",
     title = _("KOReader action"),
     order = 10,
+    action = true,
 
     pick = function(ctx, done)
         require("minimenu/ui/pickers/dispatcher").pick(ctx, function(action)
@@ -38,15 +39,5 @@ return {
                 DU.dispatcher():execute(action)
             end,
         }
-    end,
-
-    describe = function(item)
-        local DU = D()
-        local names = DU.actionNames(item.data.action)
-        for _i, name in ipairs(names) do
-            if not DU.exists(name) then return require("ffi/util").template(_("Unknown action: %1"), name) end
-        end
-        if DU.readerOnly(item.data.action) then return _("KOReader action · Reader only") end
-        return _("KOReader action")
     end,
 }

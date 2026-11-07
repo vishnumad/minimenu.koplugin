@@ -17,6 +17,16 @@ local kinds = {
             error("kaboom")
         end,
     },
+    act = {
+        action = true,
+        resolve = function(item, ctx)
+            return {
+                label = "Act",
+                available = not item.data.needs or item.data.needs == ctx.name,
+                run = function() end,
+            }
+        end,
+    },
 }
 local function lookup(n)
     return kinds[n]
@@ -129,5 +139,36 @@ describe("resolve", function()
         assert.equal("X", rows[1].icon)
         assert.equal("Broken", rows[2].label)
         assert.is_true(rows[2].dim)
+    end)
+
+    describe("second action", function()
+        local function with(secondary)
+            local it = leaf("a", "Both")
+            it.secondary = secondary
+            return it
+        end
+
+        it("shows the gear unless it has its own icon", function()
+            local s = Resolve.item(with { kind = "act", data = {} }, contexts.fm, lookup).secondary
+            assert.equal(Resolve.GEAR, s.icon)
+            assert.is_true(s.available)
+            assert.equal("function", type(s.run))
+            s = Resolve.item(with { kind = "act", data = {}, icon = "Y" }, contexts.fm, lookup).secondary
+            assert.equal("Y", s.icon)
+        end)
+
+        it("is ignored when its kind can't be a second action", function()
+            assert.is_nil(Resolve.item(with { kind = "leaf", data = { text = "x" } }, contexts.fm, lookup).secondary)
+            assert.is_nil(Resolve.item(with { kind = "not_installed", data = {} }, contexts.fm, lookup).secondary)
+        end)
+
+        it("is hidden or dimmed like rows when unavailable", function()
+            local list = { with { kind = "act", data = { needs = "reader" } } }
+            local hidden = Resolve.rows(list, contexts.fm, lookup, { hide_unavailable = true })
+            assert.is_nil(hidden[1].secondary)
+            local dimmed = Resolve.rows(list, contexts.fm, lookup, { hide_unavailable = false })
+            assert.is_true(dimmed[1].secondary.dim)
+            assert.is_nil(dimmed[1].dim)
+        end)
     end)
 end)

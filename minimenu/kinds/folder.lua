@@ -26,9 +26,4 @@ return {
             end,
         }
     end,
-
-    describe = function(item)
-        local n = #item.data.items
-        return n == 1 and _("1 item") or require("ffi/util").template(_("%1 items"), n)
-    end,
 }

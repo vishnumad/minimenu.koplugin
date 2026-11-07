@@ -9,6 +9,7 @@ local Context = require("minimenu/context")
 local Kinds = require("minimenu/kinds/init")
 local Resolve = require("minimenu/resolve")
 local Store = require("minimenu/store")
+local Util = require("minimenu/util")
 local model = require("minimenu/model")
 
 local ItemDialog = {}
@@ -28,29 +29,31 @@ local function locate(menu_id, item_id)
     return menu, item, list, index, ancestors
 end
 
-function ItemDialog.describe(item)
-    local provider = Kinds.get(item.kind)
-    if not provider then return T(_("Needs plugin: %1"), item.kind) end
-    if provider.describe then
-        local ok, text = pcall(provider.describe, item)
-        if ok and text then return text end
-    end
-    return provider.title or item.kind
+--- Calls fn(item) and saves, unless the item is gone or fn returns false.
+local function update(menu_id, item_id, fn)
+    local menu, item = locate(menu_id, item_id)
+    if not menu or fn(item) == false then return end
+    Store.itemChanged(menu.id)
+end
+
+--- Why an item can't run in `ctx`, or nil. `info` is its Resolve.inspect.
+local function problem(item, info)
+    if info.orphan then return T(_("Needs plugin: %1"), item.kind) end
+    if info.missing then return _("Not found in menu") end
+    if not info.available then return _("Not available here") end
 end
 
 --- Why an item may not show in `ctx`, or nil.
 function ItemDialog.marker(item, ctx)
     local info = Resolve.inspect(item, ctx, Kinds.get)
-    if info.orphan then return T(_("Needs plugin: %1"), item.kind) end
+    if info.orphan then return problem(item, info) end
     if item.scope == "reader" then return _("Reader only") end
     if item.scope == "filemanager" then return _("File browser only") end
-    if info.missing then return _("Not found in menu") end
-    if not info.available then return _("Not available here") end
+    return problem(item, info)
 end
 
 function ItemDialog.rename(menu_id, item_id, ctx)
     local Dialogs = require("minimenu/ui/dialogs")
-    local Util = require("minimenu/util")
     local _menu, item = locate(menu_id, item_id)
     if not item then return end
     -- Without the custom label, to hint the default name.
@@ -61,22 +64,55 @@ function ItemDialog.rename(menu_id, item_id, ctx)
         hint = info.label,
         description = _("Leave empty to use the default name."),
     }, function(text)
-        local m, it = locate(menu_id, item_id)
-        if not m then return end
-        text = Util.trim(text)
-        it.label = text ~= "" and text or nil
-        Store.itemChanged(m.id)
+        update(menu_id, item_id, function(it)
+            text = Util.trim(text)
+            it.label = text ~= "" and text or nil
+        end)
     end)
 end
 
-function ItemDialog.changeIcon(menu_id, item_id)
+--- With `secondary`, changes the second action's icon instead.
+function ItemDialog.changeIcon(menu_id, item_id, secondary)
     require("minimenu/ui/pickers/icons").pick(function(icon)
         if icon == nil then return end
-        local m, it = locate(menu_id, item_id)
-        if not m then return end
-        it.icon = icon or nil
-        Store.itemChanged(m.id)
+        update(menu_id, item_id, function(it)
+            local target = secondary and it.secondary or it
+            if not target then return false end
+            target.icon = icon or nil
+        end)
     end)
+end
+
+local function pickAction(title, menu_id, item_id, ctx, apply)
+    require("minimenu/ui/pickers/kinds").pickAction(title, { menu_id = menu_id, ctx = ctx }, function(kind, data)
+        update(menu_id, item_id, function(it)
+            apply(it, kind, data)
+        end)
+    end)
+end
+
+--- Replaces the item's action, keeping its label, icon and second action.
+function ItemDialog.changeAction(menu_id, item_id, ctx)
+    pickAction(_("Change action"), menu_id, item_id, ctx, function(it, kind, data)
+        it.kind, it.data = kind, data
+    end)
+end
+
+--- Sets the second action, keeping its icon.
+function ItemDialog.pickSecondary(menu_id, item_id, ctx)
+    pickAction(_("Second action"), menu_id, item_id, ctx, function(it, kind, data)
+        it.secondary = { kind = kind, data = data, icon = it.secondary and it.secondary.icon }
+    end)
+end
+
+function ItemDialog.removeSecondary(menu_id, item_id)
+    update(menu_id, item_id, function(it)
+        it.secondary = nil
+    end)
+end
+
+function ItemDialog.secondaryGlyph(secondary)
+    return Util.isGlyph(secondary.icon) and secondary.icon or Resolve.GEAR
 end
 
 function ItemDialog.delete(menu_id, item_id)
@@ -130,10 +166,9 @@ function ItemDialog.chooseScope(menu_id, item_id)
         )
     end
     Dialogs.choose({ title = _("Show in"), choices = choices }, function(scope)
-        local m, it = locate(menu_id, item_id)
-        if not m then return end
-        it.scope = scope or nil
-        Store.itemChanged(m.id)
+        update(menu_id, item_id, function(it)
+            it.scope = scope or nil
+        end)
     end)
 end
 
@@ -301,66 +336,30 @@ function ItemDialog.showMove(menu_id, item_id, ctx)
     return dialog
 end
 
---- `ctx` is the popup's context, or nil for the current one.
-function ItemDialog.show(menu_id, item_id, ctx)
-    ctx = ctx or Context.current()
-    local menu, item = locate(menu_id, item_id)
-    if not (menu and item) then return end
-    menu_id = menu.id
-    local provider = Kinds.get(item.kind)
-    local info = Resolve.inspect(item, ctx, Kinds.get)
-    local title = itemName(item, ctx) .. "\n" .. ItemDialog.describe(item)
-    if not provider then
-        title = title .. "\n" .. _("This item's kind isn't installed. It is kept until you delete it.")
-    end
+--- `groups` is a list of groups of button rows, each row { { text, fn }, … }.
+-- Empty groups are skipped and the rest drawn with a line between them. Each
+-- button closes the dialog before running. Tracked as ItemDialog.current.
+local function groupedDialog(title, groups)
     local dialog
     local buttons = {}
-    local function add(text, fn)
-        table.insert(buttons, {
-            {
-                text = text,
-                align = "left",
-                callback = function()
-                    UIManager:close(dialog)
-                    fn()
-                end,
-            },
-        })
+    for _i, group in ipairs(groups) do
+        if #group > 0 then
+            if #buttons > 0 then table.insert(buttons, {}) end
+            for _j, row in ipairs(group) do
+                local line = {}
+                for _k, b in ipairs(row) do
+                    table.insert(line, {
+                        text = b[1],
+                        callback = function()
+                            UIManager:close(dialog)
+                            b[2]()
+                        end,
+                    })
+                end
+                table.insert(buttons, line)
+            end
+        end
     end
-
-    if not info.separator then
-        add(_("Rename…"), function()
-            ItemDialog.rename(menu_id, item_id, ctx)
-        end)
-        add(_("Change icon…"), function()
-            ItemDialog.changeIcon(menu_id, item_id)
-        end)
-    end
-    add(T(_("Show in: %1"), scopeName(item.scope)), function()
-        ItemDialog.chooseScope(menu_id, item_id)
-    end)
-    add(_("Move…"), function()
-        ItemDialog.showMove(menu_id, item_id, ctx)
-    end)
-    if model.children(item) then
-        add(_("Add item inside…"), function()
-            require("minimenu/ui/pickers/kinds").add({ menu_id = menu_id, folder_id = item_id, ctx = ctx })
-        end)
-    elseif item.kind == "menu_link" and Store.menu(item.data.menu) then
-        add(_("Edit linked menu…"), function()
-            require("minimenu/ui/editor").showItems(item.data.menu)
-        end)
-    end
-    add(_("Add item after…"), function()
-        require("minimenu/ui/pickers/kinds").add({ menu_id = menu_id, after_id = item_id, ctx = ctx })
-    end)
-    add(_("Duplicate"), function()
-        ItemDialog.duplicate(menu_id, item_id)
-    end)
-    add(_("Delete"), function()
-        ItemDialog.delete(menu_id, item_id)
-    end)
-
     dialog = ButtonDialog:new {
         title = title,
         title_align = "center",
@@ -376,6 +375,174 @@ function ItemDialog.show(menu_id, item_id, ctx)
     ItemDialog.current = dialog
     UIManager:show(dialog)
     return dialog
+end
+
+--- The name an action shows by default, without the item's custom label.
+local function actionName(kind, data, ctx)
+    local info = Resolve.inspect({ kind = kind, data = data }, ctx, Kinds.get)
+    local provider = Kinds.get(kind)
+    return (info.label ~= kind and info.label) or (provider and provider.title) or kind
+end
+
+--- `ctx` is the popup's context, or nil for the current one.
+function ItemDialog.show(menu_id, item_id, ctx)
+    ctx = ctx or Context.current()
+    local menu, item = locate(menu_id, item_id)
+    if not (menu and item) then return end
+    menu_id = menu.id
+    local provider = Kinds.get(item.kind)
+    local info = Resolve.inspect(item, ctx, Kinds.get)
+    local title = itemName(item, ctx)
+    local why = problem(item, info)
+    if why then title = title .. "\n" .. why end
+    if not provider then title = title .. "\n" .. _("It is kept until you delete it.") end
+
+    local looks, behaviour = {}, {}
+    if not info.separator then
+        looks = {
+            {
+                {
+                    _("Rename…"),
+                    function()
+                        ItemDialog.rename(menu_id, item_id, ctx)
+                    end,
+                },
+                {
+                    _("Change icon…"),
+                    function()
+                        ItemDialog.changeIcon(menu_id, item_id)
+                    end,
+                },
+            },
+        }
+        if provider and provider.action then
+            table.insert(behaviour, {
+                {
+                    T(_("Action: %1"), actionName(item.kind, item.data, ctx)),
+                    function()
+                        ItemDialog.changeAction(menu_id, item_id, ctx)
+                    end,
+                },
+            })
+        end
+        if item.kind == "menu_link" and Store.menu(item.data.menu) then
+            table.insert(behaviour, {
+                {
+                    _("Edit linked menu…"),
+                    function()
+                        require("minimenu/ui/editor").showItems(item.data.menu)
+                    end,
+                },
+            })
+        end
+        local s = item.secondary
+        if s then
+            local text = T(_("Second action: %1"), actionName(s.kind, s.data, ctx))
+            table.insert(behaviour, {
+                {
+                    ItemDialog.secondaryGlyph(s) .. "  " .. text,
+                    function()
+                        ItemDialog.showSecondary(menu_id, item_id, ctx)
+                    end,
+                },
+            })
+        else
+            table.insert(behaviour, {
+                {
+                    _("Add second action…"),
+                    function()
+                        ItemDialog.pickSecondary(menu_id, item_id, ctx)
+                    end,
+                },
+            })
+        end
+    end
+    table.insert(behaviour, {
+        {
+            T(_("Show in: %1"), scopeName(item.scope)),
+            function()
+                ItemDialog.chooseScope(menu_id, item_id)
+            end,
+        },
+    })
+
+    local add_row = {}
+    if model.children(item) then
+        table.insert(add_row, {
+            _("Add item inside…"),
+            function()
+                require("minimenu/ui/pickers/kinds").add({ menu_id = menu_id, folder_id = item_id, ctx = ctx })
+            end,
+        })
+    end
+    table.insert(add_row, {
+        _("Add item after…"),
+        function()
+            require("minimenu/ui/pickers/kinds").add({ menu_id = menu_id, after_id = item_id, ctx = ctx })
+        end,
+    })
+    local structure = {
+        add_row,
+        {
+            {
+                _("Move…"),
+                function()
+                    ItemDialog.showMove(menu_id, item_id, ctx)
+                end,
+            },
+            {
+                _("Duplicate"),
+                function()
+                    ItemDialog.duplicate(menu_id, item_id)
+                end,
+            },
+            {
+                _("Delete"),
+                function()
+                    ItemDialog.delete(menu_id, item_id)
+                end,
+            },
+        },
+    }
+    return groupedDialog(title, { looks, behaviour, structure })
+end
+
+function ItemDialog.showSecondary(menu_id, item_id, ctx)
+    ctx = ctx or Context.current()
+    local menu, item = locate(menu_id, item_id)
+    if not (menu and item and item.secondary) then return end
+    menu_id = menu.id
+    local title = _("Second action")
+    local res = Resolve.secondary(item, ctx, Kinds.get)
+    if res and not res.available then title = title .. "\n" .. _("Not available here") end
+    return groupedDialog(title, {
+        {
+            {
+                {
+                    _("Change action…"),
+                    function()
+                        ItemDialog.pickSecondary(menu_id, item_id, ctx)
+                    end,
+                },
+            },
+            {
+                {
+                    _("Change icon…"),
+                    function()
+                        ItemDialog.changeIcon(menu_id, item_id, true)
+                    end,
+                },
+            },
+            {
+                {
+                    _("Remove"),
+                    function()
+                        ItemDialog.removeSecondary(menu_id, item_id)
+                    end,
+                },
+            },
+        },
+    })
 end
 
 return ItemDialog

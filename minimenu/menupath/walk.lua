@@ -191,13 +191,4 @@ function Walk.tabList(tab_item_table, names)
     return out
 end
 
---- "Tools › More tools › Terminal"
-function Walk.describe(path)
-    local parts = {}
-    for _, seg in ipairs(path or {}) do
-        table.insert(parts, seg.text or seg.id or "?")
-    end
-    return table.concat(parts, " › ")
-end
-
 return Walk

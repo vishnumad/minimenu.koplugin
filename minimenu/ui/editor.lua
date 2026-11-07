@@ -403,12 +403,14 @@ function Editor.itemRows(menu_id, folder_id, ctx, nav)
         end
         local is_folder = model.children(item) ~= nil
         local id = item.id
+        local mandatory = is_folder and ((marker and (marker .. "  ") or "") .. "\u{203A}")
+            or marker
+            or (provider and provider.title)
+            or item.kind
+        if item.secondary then mandatory = ItemDialog.secondaryGlyph(item.secondary) .. "  " .. mandatory end
         table.insert(rows, {
             text = text,
-            mandatory = is_folder and ((marker and (marker .. "  ") or "") .. "\u{203A}")
-                or marker
-                or (provider and provider.title)
-                or item.kind,
+            mandatory = mandatory,
             dim = marker ~= nil,
             callback = function()
                 if is_folder then

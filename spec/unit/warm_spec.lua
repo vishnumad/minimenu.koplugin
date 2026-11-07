@@ -103,6 +103,16 @@ describe("warm-up", function()
         assert.is_false(needs(ui { gestures = { tap = opens(a.id), hold = opens(gone.id) } }, "reader"))
     end)
 
+    it("counts a menu action that is a row's second action", function()
+        local m = Store.createMenu("M", {
+            item("dispatcher", { action = { history = true } }, {
+                secondary = { kind = "menu_item", data = { path = { { id = "tools" } } } },
+            }),
+        })
+        Warm.noteOpened("reader", m.id)
+        assert.is_true(needs(ui(), "reader"))
+    end)
+
     it("counts menus opened this session, per context", function()
         local m = Store.createMenu("M", { menuItem() }, { register_action = false })
         Warm.noteOpened("reader", m.id)

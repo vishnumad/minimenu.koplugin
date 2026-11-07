@@ -1,5 +1,7 @@
--- Row views: icon, label and a trailing chevron or checkbox, built for a
--- given width and painted by their panel.
+-- Row views: icon, label, a trailing chevron or checkbox and the second
+-- action's icon, built for a given width and painted by their panel. Only
+-- rows with a second action make room for it, so the others keep their
+-- trailing icons at the edge.
 
 local Blitbuffer = require("ffi/blitbuffer")
 local IconWidget = require("ui/widget/iconwidget")
@@ -50,6 +52,7 @@ function RowView.naturalWidth(row, cfg, cols)
     label:free()
     if cols.icon then w = w + cfg.icon_col end
     if cols.trail then w = w + cfg.trail_col end
+    if row.secondary then w = w + cfg.side_col end
     return w
 end
 
@@ -57,11 +60,16 @@ function RowView.build(row, cfg, cols, w)
     local view = { row = row }
     if row.separator then return view end
     local fg = (row.dim or row.placeholder) and COLOR_DIM or Blitbuffer.COLOR_BLACK
-    local label_w = w - (cols.icon and cfg.icon_col or 0) - (cols.trail and cfg.trail_col or 0)
+    local label_w = w
+        - (cols.icon and cfg.icon_col or 0)
+        - (cols.trail and cfg.trail_col or 0)
+        - (row.secondary and cfg.side_col or 0)
     view.label = textWidget(row.label or "", cfg.face, { fgcolor = fg, max_width = math.max(label_w, 1) })
     if cols.icon then view.icon = RowView.iconWidget(row.icon, cfg, fg) end
     local trail = RowView.trailingText(row)
     if trail and cols.trail then view.trail = textWidget(trail, cfg.icon_face, { fgcolor = fg }) end
+    local side = row.secondary
+    if side then view.side = RowView.iconWidget(side.icon, cfg, side.dim and COLOR_DIM or Blitbuffer.COLOR_BLACK) end
     view.cols = cols
     return view
 end
@@ -86,15 +94,22 @@ function RowView.paint(bb, view, cfg, x, y, w, h, state)
         cx = cx + cfg.icon_col
     end
     view.label:paintTo(bb, cx, vcenter(view.label))
+    local right = x + w - (view.side and cfg.side_col or 0)
     if view.trail then
         local tw = view.trail:getSize().w
-        view.trail:paintTo(bb, x + w - cfg.pad - math.floor((cfg.icon_size + tw) / 2), vcenter(view.trail))
+        view.trail:paintTo(bb, right - cfg.pad - math.floor((cfg.icon_size + tw) / 2), vcenter(view.trail))
+    end
+    if view.side then
+        local divider_h = math.floor(h / 2)
+        bb:paintRect(right, y + math.floor((h - divider_h) / 2), cfg.line, divider_h, COLOR_DIM)
+        local sw = view.side:getSize().w
+        view.side:paintTo(bb, right + math.floor((cfg.side_col - sw) / 2), vcenter(view.side))
     end
     if state and state.open then bb:invertRect(x, y, w, h) end
 end
 
 function RowView.free(view)
-    for _, k in ipairs({ "label", "icon", "trail" }) do
+    for _, k in ipairs({ "label", "icon", "trail", "side" }) do
         if view[k] and view[k].free then view[k]:free() end
         view[k] = nil
     end

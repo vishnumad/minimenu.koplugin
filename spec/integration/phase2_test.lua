@@ -53,12 +53,15 @@ test("long-press on a root row opens the item dialog", function()
     H.hold(H.rowCenter(1, 1))
     assert(ItemDialog.current and top() == ItemDialog.current, "item dialog on top")
     assert(not H.popup().closed, "popup stays open underneath")
+    eq("History", ItemDialog.current.title, "just the name when nothing is wrong")
     eq({
         "Rename…",
         "Change icon…",
+        "Action: History",
+        "Add second action…",
         "Show in: Reader and File browser",
-        "Move…",
         "Add item after…",
+        "Move…",
         "Duplicate",
         "Delete",
     }, buttonTexts(ItemDialog.current))

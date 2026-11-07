@@ -9,6 +9,7 @@ local cfg = {
     pager_h = 40,
     icon_col = 30,
     trail_col = 30,
+    side_col = 40,
 }
 
 describe("panel", function()
@@ -88,6 +89,24 @@ describe("panel", function()
         local _, short = panel:measure(200)
         assert.is_true(panel:pageCount() > 1)
         assert.is_true(short < tall)
+    end)
+
+    it("hits the second action only in its column, on rows that have one", function()
+        local panel = Panel.new { rows = { { label = "a", secondary = { icon = "g" } }, { label = "b" } }, cfg = cfg }
+        local w, h = panel:measure(1000)
+        assert.equal(10 + cfg.side_col + 2 * cfg.pad + 2 * cfg.border, w)
+        panel:layout(0, 0, w, h)
+        local r1, r2 = panel:rowRect(1), panel:rowRect(2)
+        local edge = r1.x + r1.w - cfg.side_col
+        assert.same({ "secondary", 1 }, { panel:hit(edge, r1.y + 1) })
+        assert.same({ "row", 1 }, { panel:hit(edge - 1, r1.y + 1) })
+        assert.same({ "row", 2 }, { panel:hit(edge, r2.y + 1) })
+    end)
+
+    it("makes room for a second action only in rows that have one", function()
+        local panel = Panel.new { rows = { { label = "a", secondary = { icon = "g" } }, { label = "b" } }, cfg = cfg }
+        panel:layout(0, 0, panel:measure(1000))
+        assert.equal(panel.views[1].label.max_width + cfg.side_col, panel.views[2].label.max_width)
     end)
 
     it("ignores the header for width", function()

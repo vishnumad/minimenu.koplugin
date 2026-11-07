@@ -123,6 +123,13 @@ describe("model", function()
         assert.is_true(model.linkCreatesCycle(data, "m1", "m1", "menu_link"))
     end)
 
+    it("counts links in second actions", function()
+        local items = {
+            { id = "i1", kind = "dispatcher", data = {}, secondary = { kind = "menu_link", data = { menu = "m2" } } },
+        }
+        assert.same({ m2 = true }, model.linkedMenus(items, "menu_link"))
+    end)
+
     describe("sanitize", function()
         local kinds = function(name)
             if name == "good" then
@@ -218,6 +225,37 @@ describe("model", function()
             }
             local clean = model.sanitize(input, kinds)
             assert.same(orphan, clean.menus.m1.items[1])
+        end)
+
+        it("drops a bad second action but keeps its item", function()
+            local function with(id, secondary)
+                return { id = id, kind = "good", data = { ok = true }, secondary = secondary }
+            end
+            local input = {
+                version = 1,
+                next_id = 5,
+                menu_order = { "m1" },
+                menus = {
+                    m1 = {
+                        id = "m1",
+                        title = "A",
+                        items = {
+                            with("i1", { kind = "good", data = { ok = false } }),
+                            with("i2", "junk"),
+                            with("i3", { kind = "live_panel", data = { x = 1 } }),
+                            with("i4", { kind = "good", data = { ok = true }, icon = "G" }),
+                        },
+                    },
+                },
+            }
+            local clean, changed = model.sanitize(input, kinds)
+            assert.is_true(changed)
+            local items = clean.menus.m1.items
+            assert.equal(4, #items)
+            assert.is_nil(items[1].secondary)
+            assert.is_nil(items[2].secondary)
+            assert.same(input.menus.m1.items[3].secondary, items[3].secondary)
+            assert.same(input.menus.m1.items[4].secondary, items[4].secondary)
         end)
 
         it("recurses into deep folders and validates there", function()

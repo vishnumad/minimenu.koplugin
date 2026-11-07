@@ -11,6 +11,7 @@ return {
     name = "menu_link",
     title = _("Link to another menu"),
     order = 50,
+    action = true,
 
     pick = function(ctx, done)
         require("minimenu/ui/pickers/menus").pick({
@@ -44,11 +45,5 @@ return {
                 return m and m.items or {}
             end,
         }
-    end,
-
-    describe = function(item)
-        local menu = target(item)
-        if not menu then return _("Missing menu") end
-        return require("ffi/util").template(_("Opens: %1"), menu.title)
     end,
 }

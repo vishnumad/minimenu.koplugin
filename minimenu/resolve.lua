@@ -1,15 +1,19 @@
 --[[--
 Turns stored items into the rows a panel shows:
     { label, icon, available, disabled, checked, children, run, keep_open,
-      separator, title, menu_id, dim, placeholder, item }
+      separator, title, menu_id, dim, placeholder, item, secondary }
 
 `available = false`: can't run in this context; hidden or dimmed per the
 menu's hide_unavailable. `disabled = true`: greyed out right now (e.g. "Go
 back" with no history); always dimmed, so rows don't come and go.
+`secondary` is the row's second action, { label, icon, available, disabled,
+run, keep_open, children, title, menu_id, dim }, hidden or dimmed the same way.
 `kinds` is a function(name) → provider.
 ]]
 
 local Resolve = {}
+
+Resolve.GEAR = "\u{F013}" -- cog
 
 local function logErr(...)
     local ok, logger = pcall(require, "logger")
@@ -31,7 +35,42 @@ function Resolve.item(item, ctx, kinds)
     if item.icon and item.icon ~= "" then row.icon = item.icon end
     row.label = row.label or ""
     row.item = item
+    if not row.separator then row.secondary = Resolve.secondary(item, ctx, kinds) end
     return row
+end
+
+--- nil when the item has no second action or its kind can't be one.
+function Resolve.secondary(item, ctx, kinds)
+    local s = item.secondary
+    if type(s) ~= "table" then return nil end
+    local provider = kinds(s.kind)
+    if not (provider and provider.action) then return nil end
+    local ok, res = pcall(provider.resolve, { id = item.id, kind = s.kind, data = s.data }, ctx)
+    if not ok or type(res) ~= "table" then
+        logErr("resolving the second action of item", item.id, "failed:", res)
+        res = { available = false }
+    end
+    return {
+        label = res.label,
+        icon = (s.icon and s.icon ~= "") and s.icon or Resolve.GEAR,
+        available = res.available ~= false,
+        disabled = res.disabled,
+        run = res.run,
+        keep_open = res.keep_open,
+        children = res.children,
+        title = res.title,
+        menu_id = res.menu_id,
+    }
+end
+
+local function settleSecondary(row, opts)
+    local s = row.secondary
+    if not s then return end
+    if not s.available and opts.hide_unavailable then
+        row.secondary = nil
+    elseif not s.available or s.disabled then
+        s.dim = true
+    end
 end
 
 --- Editor view of an item, whatever its scope.
@@ -76,6 +115,7 @@ function Resolve.rows(items, ctx, kinds, opts)
     for _, item in ipairs(items or {}) do
         local row = Resolve.item(item, ctx, kinds)
         if row then
+            settleSecondary(row, opts)
             if row.separator then
                 table.insert(rows, row)
             elseif row.available and row.disabled then

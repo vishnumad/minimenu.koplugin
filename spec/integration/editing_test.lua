@@ -81,6 +81,143 @@ test("Change icon… shows the picked glyph; Default removes it", function()
     Store.deleteMenu(m.id)
 end)
 
+local ran = {}
+require("minimenu/kinds/init").register({
+    name = "probe",
+    title = "Probe",
+    action = true,
+    pick = function(_ctx, done)
+        done({ name = "side" })
+    end,
+    resolve = function(item)
+        return {
+            label = item.data.name,
+            run = function()
+                table.insert(ran, item.data.name)
+            end,
+        }
+    end,
+})
+
+local function sideCenter(i)
+    local r = assert(H.popup().chain[1].panel:sideRect(i), "row has a second action")
+    return r.x + math.floor(r.w / 2), r.y + math.floor(r.h / 2)
+end
+
+test("a second action runs from its icon; the rest of the row runs the first", function()
+    ran = {}
+    local m = menuWith("Second", { id = Store.issueItemId(), kind = "probe", data = { name = "main" } })
+    API.open(m.id)
+    H.drain()
+    holdRow(1)
+    H.tapButton("Add second action…")
+    eq("Second action", H.top().title)
+    assert(H.button(H.top(), "Link to another menu"), "links can be second actions")
+    H.tapButton("Probe")
+    eq(require("minimenu/resolve").GEAR, H.popup().chain[1].panel.rows[1].secondary.icon)
+    H.shot("second_action")
+    H.tap(sideCenter(1))
+    eq({ "side" }, ran)
+    API.open(m.id)
+    H.drain()
+    H.tap(H.rowCenter(1, 1))
+    eq({ "side", "main" }, ran)
+    Store.deleteMenu(m.id)
+end)
+
+test("Action: … replaces the action, keeping the label and second action", function()
+    local item = act("history")
+    item.label = "Mine"
+    item.secondary = { kind = "probe", data = { name = "side" } }
+    local m = menuWith("Change", item)
+    API.open(m.id)
+    H.drain()
+    holdRow(1)
+    H.tapButton("Action: History")
+    eq("Change action", H.top().title)
+    H.tapButton("Probe")
+    local changed = Store.menu(m.id).items[1]
+    eq("probe", changed.kind)
+    eq("side", changed.data.name)
+    eq("Mine", changed.label)
+    eq("side", changed.secondary.data.name)
+    Store.deleteMenu(m.id)
+end)
+
+test("holding the second action edits the item; Remove clears it", function()
+    local m = menuWith("Second", {
+        id = Store.issueItemId(),
+        kind = "probe",
+        data = { name = "main" },
+        secondary = { kind = "probe", data = { name = "side" } },
+    })
+    API.open(m.id)
+    H.drain()
+    H.hold(sideCenter(1))
+    assert(ItemDialog.current and H.top() == ItemDialog.current, "item dialog on top")
+    H.tapButton(require("minimenu/resolve").GEAR .. "  Second action: side")
+    H.tapButton("Remove")
+    eq(nil, Store.menu(m.id).items[1].secondary)
+    eq(nil, H.popup().chain[1].panel.rows[1].secondary)
+    Store.deleteMenu(m.id)
+end)
+
+test("D-pad: Right steps onto the second action, Press runs it", function()
+    ran = {}
+    local m = menuWith("Second", {
+        id = Store.issueItemId(),
+        kind = "probe",
+        data = { name = "main" },
+        secondary = { kind = "probe", data = { name = "side" } },
+    })
+    API.open(m.id)
+    H.drain()
+    local p = assert(H.popup())
+    H.key("Down")
+    H.key("Right")
+    eq("secondary", p.chain[1].focus_part)
+    H.key("Left")
+    eq("row", p.chain[1].focus_part)
+    H.key("Right")
+    H.key("Press")
+    eq({ "side" }, ran)
+    Store.deleteMenu(m.id)
+end)
+
+test("a second action that links to a menu opens it beside the row", function()
+    ran = {}
+    local target = menuWith("Linked", act("history"), act("favorites"))
+    local m = menuWith("Second", {
+        id = Store.issueItemId(),
+        kind = "probe",
+        data = { name = "main" },
+        secondary = { kind = "menu_link", data = { menu = target.id } },
+    })
+    API.open(m.id)
+    H.drain()
+    local p = assert(H.popup())
+    H.tap(sideCenter(1))
+    eq(2, #p.chain, "flyout opened")
+    eq("secondary", p.chain[1].open_part)
+    eq({ "History", "Favorites" }, H.rowLabels(2))
+    H.shot("second_action_link")
+    Store.editItems(target.id, function(items)
+        table.remove(items)
+        return true
+    end)
+    eq({ "History" }, H.rowLabels(2), "stays open when the menus change")
+    H.tap(sideCenter(1))
+    eq(1, #p.chain, "tapping it again closes it")
+    H.key("Down")
+    H.key("Right")
+    H.key("Press")
+    eq(2, #p.chain, "keys open it too")
+    H.tap(H.rowCenter(1, 1))
+    eq({ "main" }, ran, "the rest of the row still runs the main action")
+    Store.deleteMenu(m.id)
+    Store.deleteMenu(target.id)
+end)
+
 test("show_title and a fixed position apply to the popup", function()
     local m = menuWith("Placed", act("history"))
     Store.setOption(m.id, "show_title", true)

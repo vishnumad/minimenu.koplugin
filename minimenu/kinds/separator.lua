@@ -16,8 +16,4 @@ return {
     resolve = function()
         return { separator = true, available = true }
     end,
-
-    describe = function()
-        return _("Separator")
-    end,
 }

@@ -68,6 +68,8 @@ function Popup.metrics()
         icon_size = icon_size,
         icon_col = icon_size + pad,
         trail_col = icon_size + pad,
+        -- The second action's tap target: wider than the icon, even without padding.
+        side_col = icon_size + 2 * math.max(pad, Screen:scaleBySize(8)),
         shadow = shadow,
         margin = math.max(Screen:scaleBySize(Store.setting("edge_margin")), shadow),
         offset = Screen:scaleBySize(12),
@@ -278,6 +280,7 @@ function Popup:paintTo(bb)
         entry.panel:paintTo(bb, {
             open_index = entry.open_index,
             focus_index = self.focus_visible and k == #self.chain and entry.focus or nil,
+            focus_part = entry.focus_part,
         })
     end
 end
@@ -305,17 +308,27 @@ function Popup:closeFrom(from)
         self.chain[k].panel:free()
         self.chain[k] = nil
     end
-    parent.open_index = nil
+    parent.open_index, parent.open_part = nil, nil
     if #self.chain == 1 then self.direction = nil end
     self:dirty(r, true)
 end
 
-function Popup:openFlyout(k, index)
+-- A row's `part` is "row" or "secondary", as Panel:hit names them.
+local function partOf(row, part)
+    return part == "secondary" and row.secondary or row
+end
+
+local function actionablePart(row, part)
+    if part == "secondary" then return row.secondary ~= nil and not row.secondary.dim end
+    return Resolve.actionable(row)
+end
+
+function Popup:openFlyout(k, index, part)
     local entry = self.chain[k]
     local row = entry.panel.rows[index]
     self:closeFrom(k + 1)
-    entry.open_index = index
-    self.chain[k + 1] = { row = row, item_id = row.item and row.item.id }
+    entry.open_index, entry.open_part = index, part
+    self.chain[k + 1] = { row = partOf(row, part), item_id = row.item and row.item.id, part = part }
     self:buildLevel(k + 1)
     self:placeLevel(k + 1)
     self:dirty(union(self.chain[k + 1].panel:dirtyRect(), entry.panel:rowRect(index)))
@@ -340,11 +353,12 @@ function Popup:runContext(k)
 end
 
 --- Closes the popup before running, so actions that replace the view (opening
--- a book, exiting) never see it. keep_open rows run in place instead.
-function Popup:runRow(k, index)
+-- a book, exiting) never see it. keep_open actions run in place instead.
+function Popup:runRow(k, index, part)
     local row = self.chain[k].panel.rows[index]
     if not row or not row.item then return end
-    local fresh = Resolve.item(row.item, self.ctx, Kinds.get)
+    local resolve = part == "secondary" and Resolve.secondary or Resolve.item
+    local fresh = resolve(row.item, self.ctx, Kinds.get)
     if not fresh or not fresh.available or fresh.disabled or type(fresh.run) ~= "function" then return end
     local run_ctx = self:runContext(k)
     if fresh.keep_open then
@@ -360,17 +374,19 @@ function Popup:runRow(k, index)
     end)
 end
 
-function Popup:activate(k, index)
-    local row = self.chain[k].panel.rows[index]
-    if not Resolve.actionable(row) then return end
-    if row.children then
-        if self.chain[k].open_index == index then
+--- Opens or closes the flyout of a row's part, or runs it.
+function Popup:activate(k, index, part)
+    local entry = self.chain[k]
+    local row = entry.panel.rows[index]
+    if not actionablePart(row, part) then return end
+    if partOf(row, part).children then
+        if entry.open_index == index and entry.open_part == part then
             self:closeFrom(k + 1)
         else
-            self:openFlyout(k, index)
+            self:openFlyout(k, index, part)
         end
     else
-        self:runRow(k, index)
+        self:runRow(k, index, part)
     end
 end
 
@@ -404,9 +420,10 @@ function Popup:rebuild()
     self.options = Store.options(self.menu)
     local before = self:chainRect(1)
     local depth = #self.chain
-    local path, pages = {}, {} -- path[k]: id of the item that opened level k
+    local path, parts, pages = {}, {}, {} -- path[k]: id of the item that opened level k
     for k = 2, depth do
         path[k] = self.chain[k].item_id
+        parts[k] = self.chain[k].part
         pages[k] = self.chain[k].panel.page
     end
     for k = depth, 2, -1 do
@@ -420,9 +437,10 @@ function Popup:rebuild()
         local id = path[k]
         if not id then break end
         local parent = self.chain[k - 1]
-        local found
+        local found, opener
         for i, row in ipairs(parent.panel.rows) do
-            if row.item and row.item.id == id and row.children then
+            opener = row.item and row.item.id == id and partOf(row, parts[k])
+            if opener and opener.children then
                 found = i
                 break
             end
@@ -433,13 +451,13 @@ function Popup:rebuild()
             parent.panel.page = page
             parent.panel:layout(parent.panel.x, parent.panel.y, parent.panel.w, parent.panel.h)
         end
-        parent.open_index = found
-        self.chain[k] = { row = parent.panel.rows[found], item_id = id }
+        parent.open_index, parent.open_part = found, parts[k]
+        self.chain[k] = { row = opener, item_id = id, part = parts[k] }
         self:buildLevel(k, pages[k])
         self:placeLevel(k)
     end
     local last = self.chain[#self.chain]
-    last.open_index = nil
+    last.open_index, last.open_part = nil, nil
     if self.focus_visible then self:ensureFocus() end
     self:dirty(union(before, self:chainRect(1)), true)
 end
@@ -521,14 +539,15 @@ function Popup:onTap(_, ges)
         self:closeFrom(k)
         return true
     end
-    if what == "row" and self.chain[k].open_index == index then
+    local on_row = what == "row" or what == "secondary"
+    if on_row and self.chain[k].open_index == index and self.chain[k].open_part == what then
         self:closeFrom(k + 1)
         return true
     end
     -- A tap in an ancestor (or its visible strip) closes everything deeper.
     self:closeFrom(k + 1)
-    if what == "row" then
-        self:activate(k, index)
+    if on_row then
+        self:activate(k, index, what)
     elseif what == "prev" then
         self:setPage(k, self.chain[k].panel.page - 1)
     elseif what == "next" then
@@ -561,7 +580,7 @@ end
 
 function Popup:onHold(_, ges)
     local k, what, index = self:hitTest(ges.pos.x, ges.pos.y)
-    if not k or what ~= "row" then return true end
+    if not k or (what ~= "row" and what ~= "secondary") then return true end
     local row = self.chain[k].panel.rows[index]
     local ItemDialog = require("minimenu/ui/item_dialog")
     if row.placeholder then
@@ -616,6 +635,7 @@ function Popup:ensureFocus()
     if not entry.focus or not Resolve.actionable(rows[entry.focus]) then
         local page = entry.panel.pages[entry.panel.page]
         entry.focus = nextActionable(rows, (page and page.first or 1) - 1, 1)
+        entry.focus_part = nil
     end
     return entry.focus
 end
@@ -626,6 +646,7 @@ function Popup:moveFocus(step)
     local had = self.focus_visible
     self.focus_visible = true
     local before = self:chainRect(k)
+    entry.focus_part = nil
     if not had or not entry.focus then
         self:ensureFocus()
     else
@@ -656,16 +677,17 @@ function Popup:pressFocused(open_only)
     if not self.focus_visible or not entry.focus then return self:moveFocus(1) end
     local row = entry.panel.rows[entry.focus]
     if not Resolve.actionable(row) then return true end
-    if row.children then
-        if entry.open_index ~= entry.focus then
-            local child = self:openFlyout(k, entry.focus)
+    local part = entry.focus_part == "secondary" and row.secondary and "secondary" or "row"
+    if partOf(row, part).children then
+        if entry.open_index ~= entry.focus or entry.open_part ~= part then
+            local child = self:openFlyout(k, entry.focus, part)
             child.focus = nil
             self.focus_visible = true
             self:ensureFocus()
             self:dirty(child.panel:dirtyRect())
         end
     elseif not open_only then
-        self:runRow(k, entry.focus)
+        self:runRow(k, entry.focus, part)
     end
     return true
 end
@@ -678,16 +700,29 @@ function Popup:closeDeepest()
     local k = #self.chain
     if k <= 1 then return false end
     local parent = self.chain[k - 1]
-    local opener = parent.open_index
+    local opener, opener_part = parent.open_index, parent.open_part
     self:closeFrom(k)
-    -- Focus goes back to the row that opened the closed flyout.
+    -- Focus goes back to the part of the row that opened the closed flyout.
     parent.focus = opener or parent.focus
+    parent.focus_part = opener_part
     return true
 end
 
--- The key towards the cascade opens a flyout and the other one closes it,
--- stacked cards included: they step the same way.
+-- Right steps onto the focused row's second action and Left steps back off
+-- it. Otherwise the key towards the cascade opens a flyout and the other one
+-- closes it, stacked cards included: they step the same way.
 function Popup:focusSideways(side)
+    local _, entry = self:deepest()
+    if self.focus_visible and entry.focus then
+        local on_secondary = entry.focus_part == "secondary"
+        local onto = side == "right" and not on_secondary and actionablePart(entry.panel.rows[entry.focus], "secondary")
+        local off = side == "left" and on_secondary
+        if onto or off then
+            entry.focus_part = onto and "secondary" or "row"
+            self:dirty(entry.panel:dirtyRect())
+            return true
+        end
+    end
     if side == self:cascadeDirection() then return self:pressFocused(true) end
     if self:closeDeepest() then self.focus_visible = true end
     return true

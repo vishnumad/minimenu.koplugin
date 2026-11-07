@@ -99,15 +99,6 @@ function DispatchUtil.available(action)
     return true
 end
 
-function DispatchUtil.readerOnly(action)
-    local list = DispatchUtil.settingsList()
-    for _, name in ipairs(DispatchUtil.actionNames(action)) do
-        local e = list and list[name]
-        if e and (e.reader or e.paging or e.rolling) then return true end
-    end
-    return false
-end
-
 function DispatchUtil.label(action)
     local Dispatcher = DispatchUtil.dispatcher()
     local names = DispatchUtil.actionNames(action)

@@ -1,8 +1,11 @@
 --[[--
 Item kind registry. A kind is a provider table:
-    { name, title, order, pick, validate, resolve, describe }
+    { name, title, order, pick, validate, resolve, action }
 Only `name` and `resolve` are required; kinds without `pick` can't be added
-from the UI.
+from the UI. `action = true` marks kinds that do something when tapped:
+their resolve gives a `run`, or `children` for a menu that opens beside the
+row. They can be a row's second action (`item.secondary = { kind, data,
+icon }`), and an item's action can be changed to any of them.
 ]]
 
 local Kinds = {
@@ -36,11 +39,11 @@ function Kinds.get(name)
     return Kinds.providers[name]
 end
 
---- Kinds the user can add, sorted by order.
-function Kinds.list()
+--- Kinds the user can add, sorted by order. `filter(provider)` narrows them.
+function Kinds.list(filter)
     local out = {}
     for _, p in pairs(Kinds.providers) do
-        if p.pick then table.insert(out, p) end
+        if p.pick and (not filter or filter(p)) then table.insert(out, p) end
     end
     table.sort(out, function(a, b)
         local oa, ob = a.order or 1000, b.order or 1000

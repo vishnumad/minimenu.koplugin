@@ -173,13 +173,17 @@ function M.cloneItem(item, issue)
     return copy
 end
 
---- Ids of menus linked (at any depth) from `items`.
+--- Ids of menus linked (at any depth, second actions included) from `items`.
 function M.linkedMenus(items, link_kind)
     local out = {}
-    M.walk(items, function(item)
-        if item.kind == link_kind and type(item.data) == "table" and type(item.data.menu) == "string" then
-            out[item.data.menu] = true
+    local function see(a)
+        if type(a) == "table" and a.kind == link_kind and type(a.data) == "table" and type(a.data.menu) == "string" then
+            out[a.data.menu] = true
         end
+    end
+    M.walk(items, function(item)
+        see(item)
+        see(item.secondary)
     end)
     return out
 end
@@ -210,6 +214,13 @@ local function idNumber(id)
     return tonumber(id:match("^[mi](%d+)$"))
 end
 
+local function validSecondary(s, kinds)
+    if type(s) ~= "table" or type(s.kind) ~= "string" or type(s.data) ~= "table" then return false end
+    if s.icon ~= nil and type(s.icon) ~= "string" then return false end
+    local provider = kinds and kinds(s.kind)
+    return not (provider and provider.validate and not provider.validate(s.data))
+end
+
 function M.empty()
     return { version = M.SCHEMA_VERSION, next_id = 1, menu_order = {}, menus = {} }
 end
@@ -217,7 +228,8 @@ end
 --[[--
 Repair a store without mutating `input`. `kinds` is a function(name) →
 provider|nil. Items of unregistered kinds are kept as they are; items that
-fail their kind's `validate` are dropped. Duplicate ids are re-issued.
+fail their kind's `validate` are dropped, and so are second actions that
+fail theirs (keeping the item). Duplicate ids are re-issued.
 
 Returns clean, changed
 ]]
@@ -322,6 +334,10 @@ function M.sanitize(input, kinds)
                         local valid = provider.validate(item.data)
                         if not valid then ok = false end
                     end
+                end
+                if ok and item.secondary ~= nil and not validSecondary(item.secondary, kinds) then
+                    item.secondary = nil
+                    changed = true
                 end
                 if ok then
                     table.insert(kept, item)

@@ -7,6 +7,7 @@ local Plugin = {
     name = "plugin",
     title = _("Plugin"),
     order = 30,
+    action = true,
 }
 
 function Plugin.module(name)
@@ -83,11 +84,6 @@ function Plugin.resolve(item, ctx)
             end
         end,
     }
-end
-
-function Plugin.describe(item)
-    if item.data.doc_only then return _("Plugin · Reader only") end
-    return _("Plugin")
 end
 
 return Plugin

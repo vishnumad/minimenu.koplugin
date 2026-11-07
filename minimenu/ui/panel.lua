@@ -193,6 +193,14 @@ function Panel:rowRect(i)
     return self.row_rects and self.row_rects[i]
 end
 
+--- The second action's part of row i, or nil when it has none.
+function Panel:sideRect(i)
+    local r = self:rowRect(i)
+    if not r or not self.rows[i].secondary then return nil end
+    local w = self.cfg.side_col
+    return { x = r.x + r.w - w, y = r.y, w = w, h = r.h }
+end
+
 function Panel:pageCount()
     return self.pages and #self.pages or 1
 end
@@ -207,7 +215,7 @@ local function contains(r, px, py)
     return r and px >= r.x and px < r.x + r.w and py >= r.y and py < r.y + r.h
 end
 
---- Returns "row", index | "back" | "title" | "prev" | "next" | "frame" | nil
+--- Returns "row", index | "secondary", index | "back" | "title" | "prev" | "next" | "frame" | nil
 function Panel:hit(px, py)
     if not contains(self, px, py) then return nil end
     if self.title_rect and contains(self.title_rect, px, py) then return self.header and "back" or "title" end
@@ -218,7 +226,10 @@ function Panel:hit(px, py)
         return "frame"
     end
     for i, r in pairs(self.row_rects) do
-        if contains(r, px, py) then return "row", i end
+        if contains(r, px, py) then
+            if contains(self:sideRect(i), px, py) then return "secondary", i end
+            return "row", i
+        end
     end
     return "frame"
 end
@@ -276,9 +287,10 @@ function Panel:paintTo(bb, state)
         RowView.paint(bb, self.views[i], cfg, r.x, r.y, r.w, r.h, { open = open })
         if open then self:uninvertCorners(bb, r) end
         if state and state.focus_index == i then
-            local top, bottom = self:touchesEdges(r)
+            local fr = state.focus_part == "secondary" and self:sideRect(i) or r
+            local top, bottom = self:touchesEdges(fr)
             local radius = (top or bottom) and math.max(cfg.radius - cfg.border, 0) or nil
-            bb:paintBorder(r.x, r.y, r.w, r.h, cfg.focus_border, Blitbuffer.COLOR_BLACK, radius)
+            bb:paintBorder(fr.x, fr.y, fr.w, fr.h, cfg.focus_border, Blitbuffer.COLOR_BLACK, radius)
         end
     end
     if self.pager_rect then
