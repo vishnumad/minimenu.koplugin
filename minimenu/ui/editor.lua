@@ -232,7 +232,7 @@ end
 local function spinItem(key, title, opts)
     local function value()
         local v = Store.setting(key)
-        return opts.precision and opts.precision:format(v) or v
+        return (opts.precision and opts.precision:format(v) or v) .. (opts.unit or "")
     end
     return {
         text_func = function()
@@ -250,6 +250,7 @@ local function spinItem(key, title, opts)
                 value_step = opts.step or 1,
                 value_hold_step = opts.hold_step or 4,
                 precision = opts.precision,
+                unit = opts.unit,
                 default_value = Store.DEFAULT_SETTINGS[key],
                 keep_shown_on_apply = true,
                 callback = function(spin)
@@ -325,6 +326,14 @@ local function appearanceItems()
             min = 12,
             max = 36,
             help_text = _("Text size in all menus. Rows and icons grow with it."),
+        }),
+        spinItem("icon_scale", _("Icon size"), {
+            min = 50,
+            max = 200,
+            step = 5,
+            hold_step = 25,
+            unit = "%",
+            help_text = _("Icon size, relative to the text size."),
         }),
         spinItem("row_spacing", _("Row spacing"), {
             min = 1.5,

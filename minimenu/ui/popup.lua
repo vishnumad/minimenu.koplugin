@@ -30,9 +30,9 @@ local Popup = InputContainer:extend {
     stop_events_propagation = true,
 }
 
---- Point size of row icons at the current text size.
+--- Point size of row icons at the current text size and icon scale.
 function Popup.iconPoints()
-    return math.floor(Store.setting("font_size") * 1.1 + 0.5)
+    return math.floor(Store.setting("font_size") * 1.1 * Store.setting("icon_scale") / 100 + 0.5)
 end
 
 local function textFont()
@@ -45,8 +45,12 @@ end
 function Popup.metrics()
     local font_size = Store.setting("font_size")
     local icon_pt = Popup.iconPoints()
-    local row_h = Screen:scaleBySize(math.floor(font_size * Store.setting("row_spacing") + 0.5))
     local icon_size = Screen:scaleBySize(icon_pt)
+    -- Rows are at least 1.25x the icon height so scaled-up icons keep a margin.
+    local row_h = math.max(
+        Screen:scaleBySize(math.floor(font_size * Store.setting("row_spacing") + 0.5)),
+        math.ceil(icon_size * 1.25)
+    )
     local pad = Screen:scaleBySize(Store.setting("padding"))
     local face = Font:getFace(textFont(), font_size)
     local shadow = Store.setting("shadow") and Screen:scaleBySize(3) or 0

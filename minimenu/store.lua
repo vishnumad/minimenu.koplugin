@@ -28,6 +28,7 @@ Store.POSITIONS = { "gesture", "center", "top_left", "top_right", "bottom_left",
 -- Global appearance settings. Lengths are unscaled; "font" is a font file path.
 Store.DEFAULT_SETTINGS = {
     font_size = 20,
+    icon_scale = 100,
     edge_margin = 10,
     padding = 14,
     row_spacing = 2.2,
