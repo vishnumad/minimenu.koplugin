@@ -33,6 +33,7 @@ end
 function Capture.pick(ctx, done)
     local Dialogs = require("minimenu/ui/dialogs")
     local Live = require("minimenu/menupath/live")
+    local RowView = require("minimenu/ui/row")
     local Util = require("minimenu/util")
     local Walk = require("minimenu/menupath/walk")
     local tree = Live.tree({ ui = ctx.ui })
@@ -88,7 +89,7 @@ function Capture.pick(ctx, done)
             if row.submenu or #level.path == 0 then
                 mandatory = "\u{203A}"
             elseif row.toggle then
-                mandatory = Walk.checked(row.node) and "\u{F046}" or "\u{F096}"
+                mandatory = Walk.checked(row.node) and RowView.CHECKED or RowView.UNCHECKED
             end
             table.insert(items, {
                 text = row.text,

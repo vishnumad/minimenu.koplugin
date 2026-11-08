@@ -11,8 +11,8 @@ local Util = require("minimenu/util")
 local RowView = {}
 
 RowView.CHEVRON = "\u{E841}" -- chevron-right
-RowView.CHECKED = "\u{F046}" -- check-square-o
-RowView.UNCHECKED = "\u{F096}" -- square-o
+RowView.CHECKED = "\u{E834}" -- checkbox-marked-outline
+RowView.UNCHECKED = "\u{E830}" -- checkbox-blank-outline
 
 local COLOR_DIM = Blitbuffer.COLOR_DARK_GRAY
 
