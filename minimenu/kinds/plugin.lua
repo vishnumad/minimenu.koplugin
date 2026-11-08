@@ -1,5 +1,6 @@
-local _ = require("gettext")
 local Util = require("minimenu/util")
+local logger = require("logger")
+local _ = require("gettext")
 
 local PLUGIN_ICON = "\u{F12E}"
 
@@ -23,10 +24,7 @@ function Plugin.entries(instance)
     local scratch = {}
     if type(instance) ~= "table" or type(instance.addToMainMenu) ~= "function" then return scratch end
     local ok, err = pcall(instance.addToMainMenu, instance, scratch)
-    if not ok then
-        local lok, logger = pcall(require, "logger")
-        if lok then logger.warn("MiniMenu: probing plugin menu failed:", err) end
-    end
+    if not ok then logger.warn("MiniMenu: probing plugin menu failed:", err) end
     return scratch
 end
 
@@ -73,8 +71,7 @@ function Plugin.resolve(item, ctx)
             local Walk = require("minimenu/menupath/walk")
             local entry = Plugin.pickEntry(Plugin.entries(instance), data)
             if not entry then
-                local lok, logger = pcall(require, "logger")
-                if lok then logger.warn("MiniMenu: plugin has no menu entry:", data.name) end
+                logger.warn("MiniMenu: plugin has no menu entry:", data.name)
                 return
             end
             if Walk.isSubmenu(entry) then

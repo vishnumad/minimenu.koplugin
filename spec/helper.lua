@@ -22,5 +22,3 @@ end
 package.preload["ffi/util"] = function()
     return { template = template }
 end
-
-_G.MINIMENU_TEST = true

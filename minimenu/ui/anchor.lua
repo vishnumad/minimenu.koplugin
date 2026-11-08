@@ -132,15 +132,14 @@ args:
     rect, prefer API anchor, which overrides `position`
     offset       distance from a gesture point
     gap          distance from an anchor rect
-Returns rect, "anchor" | "gesture" | "fixed"
 ]]
 function Anchor.placeRoot(args)
     local size, screen, margin = args.size, args.screen, args.margin or 0
-    if args.rect then return Anchor.atRect(args.rect, args.prefer, size, screen, margin, args.gap or 0), "anchor" end
+    if args.rect then return Anchor.atRect(args.rect, args.prefer, size, screen, margin, args.gap or 0) end
     if args.position == "gesture" and args.point then
-        return Anchor.atPoint(args.point, size, screen, margin, args.offset), "gesture"
+        return Anchor.atPoint(args.point, size, screen, margin, args.offset)
     end
-    return Anchor.fixed(args.position, size, screen, margin), "fixed"
+    return Anchor.fixed(args.position, size, screen, margin)
 end
 
 --- Flyouts cascade away from the screen edge nearest the root panel.
@@ -163,7 +162,7 @@ args:
     indent      stacked-card indent
     min_w       minimum panel width
 
-Returns x, w, mode ("side" | "stacked"), side ("right" | "left")
+Returns x, w, mode ("side" | "stacked")
 ]]
 function Anchor.flyoutX(args)
     local p, screen, margin = args.parent, args.screen, args.margin or 0
@@ -191,9 +190,9 @@ function Anchor.flyoutX(args)
     local dir = args.direction == "left" and "left" or "right"
     local other = dir == "right" and "left" or "right"
     local x = sideX(dir)
-    if x then return x, w, "side", dir end
+    if x then return x, w, "side" end
     x = sideX(other)
-    if x then return x, w, "side", other end
+    if x then return x, w, "side" end
 
     -- Stacked cards: overlap the parent, offset inward from its leading edge.
     local indent = args.indent or 0
@@ -203,12 +202,12 @@ function Anchor.flyoutX(args)
         x = min(p.x + indent, screen.w - margin - min_w)
         x = max(x, margin)
         w = min(w, screen.w - margin - x)
-        return x, w, "stacked", dir
+        return x, w, "stacked"
     else
         local right = max(p.x + p.w - indent, margin + min_w)
         right = min(right, screen.w - margin)
         w = min(w, right - margin)
-        return right - w, w, "stacked", dir
+        return right - w, w, "stacked"
     end
 end
 

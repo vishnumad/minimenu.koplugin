@@ -51,7 +51,7 @@ function RowView.naturalWidth(row, cfg, cols)
     w = w + label:getSize().w
     label:free()
     if cols.icon then w = w + cfg.icon_col end
-    if cols.trail then w = w + cfg.trail_col end
+    if cols.trail then w = w + cfg.icon_col end
     if row.secondary then w = w + cfg.side_col end
     return w
 end
@@ -62,7 +62,7 @@ function RowView.build(row, cfg, cols, w)
     local fg = (row.dim or row.placeholder) and COLOR_DIM or Blitbuffer.COLOR_BLACK
     local label_w = w
         - (cols.icon and cfg.icon_col or 0)
-        - (cols.trail and cfg.trail_col or 0)
+        - (cols.trail and cfg.icon_col or 0)
         - (row.secondary and cfg.side_col or 0)
     view.label = textWidget(row.label or "", cfg.face, { fgcolor = fg, max_width = math.max(label_w, 1) })
     if cols.icon then view.icon = RowView.iconWidget(row.icon, cfg, fg) end

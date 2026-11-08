@@ -55,7 +55,7 @@ local last_view
 -- leave room for the title and the two rows of buttons below the grid.
 local function gridLayout()
     local Screen = require("device").screen
-    local pt = math.max(26, require("minimenu/ui/popup").iconPoints())
+    local pt = math.max(26, require("minimenu/ui/metrics").iconPoints())
     local cell_h = Screen:scaleBySize(pt * 2)
     local max_rows = Screen:getWidth() > Screen:getHeight() and 4 or 7
     local fit = math.floor((Screen:getHeight() * 0.85 - 3 * Screen:scaleBySize(52)) / cell_h)

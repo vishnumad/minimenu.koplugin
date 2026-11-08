@@ -34,7 +34,7 @@ describe("kinds", function()
             bad = { {}, { path = {} }, { path = { {} } }, { path = { "str" } } },
         },
         plugin = {
-            good = { { name = "statistics" }, { name = "x", entry = "y", doc_only = true } },
+            good = { { name = "statistics" }, { name = "x", entry = "y" } },
             bad = { {}, { name = "" }, { name = 3 } },
         },
         folder = { good = { { items = {} } }, bad = { {}, { items = "x" } } },

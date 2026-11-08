@@ -1,6 +1,7 @@
 local Kinds = require("minimenu/kinds/init")
 local DispatchUtil = require("minimenu/dispatch")
 local Store = require("minimenu/store")
+local Support = require("spec/support")
 
 local current -- context name the fake Dispatcher believes in
 local list = {
@@ -9,19 +10,10 @@ local list = {
 }
 local executed = {}
 local fakeDispatcher = {
+    -- KOReader's Dispatcher:isActionEnabled, without its paging/rolling split.
     isActionEnabled = function(_, action)
-        -- mirrors KOReader's Dispatcher:isActionEnabled
-        local disabled = true
-        if action and (action.condition == nil or action.condition == true) then
-            if current.sub == "paging" then
-                disabled = action.rolling
-            elseif current.sub == "rolling" then
-                disabled = action.paging
-            else
-                disabled = action.reader or action.rolling or action.paging
-            end
-        end
-        return not disabled
+        if not action or action.condition == false then return false end
+        return current.name == "reader" or not action.reader
     end,
     getNameFromItem = function(_, name)
         return list[name] and list[name].title or "Unknown item"
@@ -115,8 +107,7 @@ end
 
 local contexts = {
     fm = { name = "filemanager" },
-    paging = { name = "reader", sub = "paging" },
-    rolling = { name = "reader", sub = "rolling" },
+    reader = { name = "reader" },
 }
 
 local function row(kind, data, ctx)
@@ -144,8 +135,8 @@ describe("kinds resolve", function()
         it("is available where Dispatcher enables it, never when unknown", function()
             assert.is_true(row("dispatcher", { action = { history = true } }, contexts.fm).available)
             assert.is_false(row("dispatcher", { action = { toc = true } }, contexts.fm).available)
-            assert.is_true(row("dispatcher", { action = { toc = true } }, contexts.paging).available)
-            assert.is_false(row("dispatcher", { action = { gone = true } }, contexts.paging).available)
+            assert.is_true(row("dispatcher", { action = { toc = true } }, contexts.reader).available)
+            assert.is_false(row("dispatcher", { action = { gone = true } }, contexts.reader).available)
         end)
         it("labels and runs the stored table verbatim", function()
             local action = { history = true }
@@ -158,7 +149,7 @@ describe("kinds resolve", function()
             local r = row(
                 "dispatcher",
                 { action = { history = true, toc = true, settings = { order = { "history", "toc" } } } },
-                contexts.paging
+                contexts.reader
             )
             assert.equal("2 actions", r.label)
             assert.is_true(r.available)
@@ -174,10 +165,11 @@ describe("kinds resolve", function()
                 local r = row("menu_item", wifi_path, c)
                 assert.is_true(r.available)
                 assert.is_true(r.keep_open)
-                assert.is_false(r.checked)
             end
-            local r = row("menu_item", wifi_path, contexts.fm)
-            r.run()
+        end)
+        it("running a toggle flips its check", function()
+            assert.is_false(row("menu_item", wifi_path, contexts.fm).checked)
+            row("menu_item", wifi_path, contexts.fm).run()
             assert.is_true(row("menu_item", wifi_path, contexts.fm).checked)
             wifi = false
         end)
@@ -191,8 +183,7 @@ describe("kinds resolve", function()
             }
             assert.is_false(row("menu_item", data, contexts.fm).available)
             assert.equal("Table of contents", row("menu_item", data, contexts.fm).label)
-            assert.is_true(row("menu_item", data, contexts.paging).available)
-            assert.is_true(row("menu_item", data, contexts.rolling).available)
+            assert.is_true(row("menu_item", data, contexts.reader).available)
         end)
         it("greyed-out entries are available but disabled", function()
             local r = row("menu_item", { path = { { id = "setting" }, { id = "off" } } }, contexts.fm)
@@ -295,7 +286,7 @@ describe("kinds resolve", function()
         end)
         it("lets the entry's callback close and refresh the popup, if any, now or later", function()
             local tm
-            local ctx = { name = "reader", sub = "paging", ui = { menu = {} } }
+            local ctx = { name = "reader", ui = { menu = {} } }
             ctx.ui.menu.tab_item_table = {
                 {
                     id = "navi",
@@ -368,9 +359,8 @@ describe("kinds resolve", function()
     describe("plugin", function()
         it("is available where the plugin is loaded", function()
             assert.is_true(row("plugin", { name = "statistics" }, contexts.fm).available)
-            assert.is_false(row("plugin", { name = "kosync", doc_only = true }, contexts.fm).available)
-            contexts.paging.ui = fakeUI("reader")
-            assert.is_true(row("plugin", { name = "kosync", doc_only = true }, contexts.paging).available)
+            assert.is_false(row("plugin", { name = "kosync" }, contexts.fm).available)
+            assert.is_true(row("plugin", { name = "kosync" }, contexts.reader).available)
         end)
         it("picks the entry: data.entry, then plugin name, then the only one", function()
             local Plugin = Kinds.get("plugin")
@@ -384,8 +374,7 @@ describe("kinds resolve", function()
 
     describe("containers", function()
         before_each(function()
-            Store.setBackend(Store.memoryBackend(nil))
-            Store.listeners = {}
+            Support.memoryStore()
             Store.load()
         end)
         it("folders are always available and lazy", function()

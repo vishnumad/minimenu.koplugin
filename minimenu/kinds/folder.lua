@@ -1,11 +1,12 @@
 local _ = require("gettext")
 
-local FOLDER_ICON = "\u{F07B}"
+local ICON = "\u{F07B}"
 
 return {
     name = "folder",
     title = _("Folder"),
     order = 40,
+    ICON = ICON,
 
     pick = function(_ctx, done)
         done({ items = {} }, nil, nil, { ask_label = true })
@@ -18,7 +19,7 @@ return {
     resolve = function(item)
         return {
             label = _("Folder"),
-            icon = FOLDER_ICON,
+            icon = ICON,
             available = true,
             title = item.label,
             children = function()

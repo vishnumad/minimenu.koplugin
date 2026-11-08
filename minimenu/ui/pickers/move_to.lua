@@ -7,17 +7,19 @@ local MoveTo = {}
 
 function MoveTo.pick(menu_id, item_id)
     local Dialogs = require("minimenu/ui/dialogs")
+    local Folder = require("minimenu/kinds/folder")
+    local MenuLink = require("minimenu/kinds/menu_link")
     local Store = require("minimenu/store")
     local model = require("minimenu/model")
     local menu = Store.menu(menu_id)
     if not menu then return end
     local _item, _list, _index, ancestors = model.find(menu.items, item_id)
     local current = ancestors and ancestors[#ancestors]
-    local choices = { { text = "\u{F0C9}  " .. _("Top level"), value = false, enabled = current ~= nil } }
+    local choices = { { text = MenuLink.ICON .. "  " .. _("Top level"), value = false, enabled = current ~= nil } }
     for _i, entry in ipairs(model.folders(menu.items, item_id)) do
         local indent = string.rep("    ", entry.depth - 1)
         table.insert(choices, {
-            text = indent .. "\u{F07B}  " .. (entry.item.label or _("Folder")),
+            text = indent .. Folder.ICON .. "  " .. (entry.item.label or _("Folder")),
             value = entry.item.id,
             enabled = not (current and current.id == entry.item.id),
         })

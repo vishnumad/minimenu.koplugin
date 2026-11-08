@@ -78,7 +78,7 @@ function Capture.pick(ctx, done)
                 text = "\u{F067}  " .. _("Add this page"),
                 bold = true,
                 callback = function()
-                    local icon = select(1, Util.splitLeadingIcon(level.title))
+                    local icon = Util.splitLeadingIcon(level.title)
                     finish({ path = copyPath(level.path), page = true, captured_in = captured_in }, icon)
                 end,
             })
@@ -98,7 +98,7 @@ function Capture.pick(ctx, done)
                     if row.submenu or #level.path == 0 then
                         enter(row)
                     elseif row.leaf then
-                        local icon = select(1, Util.splitLeadingIcon(row.text))
+                        local icon = Util.splitLeadingIcon(row.text)
                         finish(
                             { path = copyPath(level.path, row.segment), page = false, captured_in = captured_in },
                             icon

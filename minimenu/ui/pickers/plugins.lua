@@ -27,7 +27,7 @@ function PluginPicker.rows(ctx)
                 -- Plugins without a menu entry have nothing to launch.
                 for _j, key in ipairs(keys) do
                     local icon, label = Util.splitLeadingIcon(Walk.text(entries[key]))
-                    local data = { name = mod.name, doc_only = mod.is_doc_only and true or false }
+                    local data = { name = mod.name }
                     if key ~= mod.name then data.entry = key end
                     if #keys > 1 then data.entry_text = label end
                     table.insert(rows, { label = label, icon = icon, data = data, here = true })
@@ -35,7 +35,7 @@ function PluginPicker.rows(ctx)
             else
                 table.insert(rows, {
                     label = mod.fullname or mod.name,
-                    data = { name = mod.name, doc_only = mod.is_doc_only and true or false },
+                    data = { name = mod.name },
                     here = false,
                     reader_only = mod.is_doc_only and true or false,
                 })

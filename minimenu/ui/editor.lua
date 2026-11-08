@@ -394,7 +394,7 @@ function Editor.itemRows(menu_id, folder_id, ctx, nav)
     for _i, item in ipairs(list) do
         local info = Resolve.inspect(item, ctx, Kinds.get)
         local provider = Kinds.get(item.kind)
-        local marker = ItemDialog.marker(item, ctx)
+        local marker = ItemDialog.marker(item, info)
         local text
         if info.separator then
             text = "\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}  " .. _("Separator")
@@ -403,11 +403,15 @@ function Editor.itemRows(menu_id, folder_id, ctx, nav)
         end
         local is_folder = model.children(item) ~= nil
         local id = item.id
-        local mandatory = is_folder and ((marker and (marker .. "  ") or "") .. "\u{203A}")
-            or marker
-            or (provider and provider.title)
-            or item.kind
-        if item.secondary then mandatory = ItemDialog.secondaryGlyph(item.secondary) .. "  " .. mandatory end
+        local parts = {}
+        if item.secondary then table.insert(parts, ItemDialog.secondaryGlyph(item.secondary)) end
+        if is_folder then
+            if marker then table.insert(parts, marker) end
+            table.insert(parts, "\u{203A}")
+        else
+            table.insert(parts, marker or (provider and provider.title) or item.kind)
+        end
+        local mandatory = table.concat(parts, "  ")
         table.insert(rows, {
             text = text,
             mandatory = mandatory,

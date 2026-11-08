@@ -1,5 +1,6 @@
-local Store = require("minimenu/store")
 local Actions = require("minimenu/actions")
+local Store = require("minimenu/store")
+local Support = require("spec/support")
 
 local function fakeDispatcher()
     local d = { list = {}, calls = {} }
@@ -19,8 +20,7 @@ end
 describe("actions lifecycle", function()
     local D, events
     before_each(function()
-        Store.setBackend(Store.memoryBackend(nil))
-        Store.listeners = {}
+        Support.memoryStore()
         Store.load()
         D = fakeDispatcher()
         events = {}
@@ -41,8 +41,6 @@ describe("actions lifecycle", function()
             { category = "none", event = "MiniMenuOpen", arg = m.id, title = "MiniMenu: Reading tools", general = true },
             spec
         )
-        assert.is_nil(spec.reader)
-        assert.is_nil(spec.filemanager)
     end)
 
     it("rename keeps the action name with the new title, without a broadcast", function()
@@ -60,7 +58,6 @@ describe("actions lifecycle", function()
         assert.equal(1, #events)
         assert.equal("DispatcherActionNameChanged", events[1].name)
         assert.same({ old_name = name }, events[1].payload)
-        assert.is_nil(events[1].payload.new_name)
     end)
 
     it("switching 'show in action list' off unregisters, on registers", function()

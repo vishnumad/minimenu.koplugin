@@ -52,7 +52,7 @@ test("Dispatcher opens the popup at the gesture with filtered rows", function()
     eq({ "History", "Favorites", "--", "Tools", "Full screen refresh" }, H.rowLabels(1))
     local r = p.chain[1].panel:rect()
     assert(r.x > 60 and r.y > 80, "panel should open away from the finger")
-    H.shot("p0_root_fm")
+    H.shot("popup_root_fm")
 end)
 
 test("tapping a folder opens a flyout; tapping it again closes it", function()
@@ -66,7 +66,7 @@ test("tapping a folder opens a flyout; tapping it again closes it", function()
     eq({ "Screenshot", "Toggle night mode", "Network" }, H.rowLabels(2))
     H.tap(H.rowCenter(2, 3))
     eq(3, #p.chain)
-    H.shot("p0_flyouts")
+    H.shot("popup_flyouts")
     -- tapping a row of the root closes deeper flyouts
     H.tap(H.rowCenter(1, fi))
     eq(1, #p.chain)
@@ -145,7 +145,7 @@ for _, start in ipairs({ { 30, 60, "left" }, { 570, 60, "right" } }) do
                 ("panel %d off screen: %d,%d %dx%d"):format(k, r.x, r.y, r.w, r.h)
             )
         end
-        H.shot("p0_deep_" .. start[3])
+        H.shot("popup_deep_" .. start[3])
         -- back closes the deepest flyout each time, then the popup
         for level = 8, 1, -1 do
             p:onBack()

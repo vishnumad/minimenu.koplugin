@@ -21,6 +21,13 @@ function Index.all()
     return all
 end
 
+--- The glyph named `name` in KOReader's symbols font, or nil.
+function Index.glyph(name)
+    for _i, e in ipairs(require("minimenu/icons/glyphs")) do
+        if e[1] == name then return Util.utf8char(e[2]) end
+    end
+end
+
 local by_category = {}
 function Index.category(key)
     if by_category[key] then return by_category[key] end

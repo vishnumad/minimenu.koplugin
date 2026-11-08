@@ -8,7 +8,7 @@ local kinds = {
     },
     leaf = {
         resolve = function(item, ctx)
-            local ok = not item.data.needs or item.data.needs == ctx.name or item.data.needs == ctx.sub
+            local ok = not item.data.needs or item.data.needs == ctx.name
             return { label = item.data.text, available = ok, run = function() end }
         end,
     },
@@ -47,8 +47,7 @@ end
 
 local contexts = {
     fm = { name = "filemanager" },
-    paging = { name = "reader", sub = "paging" },
-    rolling = { name = "reader", sub = "rolling" },
+    reader = { name = "reader" },
 }
 
 describe("resolve", function()
@@ -57,8 +56,6 @@ describe("resolve", function()
         leaf("a", "Both"),
         leaf("b", "Reader action", "reader"),
         sep("s1"),
-        leaf("c", "PDF only", "paging"),
-        leaf("d", "EPUB only", "rolling"),
         sep("s2"),
         sep("s3"),
         leaf("e", "FM scoped", nil, "filemanager"),
@@ -73,18 +70,14 @@ describe("resolve", function()
         local opts = { hide_unavailable = true, placeholder = "Nothing here" }
         assert.same({ "Both", "--", "FM scoped", "Last" }, labels(Resolve.rows(items, contexts.fm, lookup, opts)))
         assert.same(
-            { "Both", "Reader action", "--", "PDF only", "--", "Reader scoped", "--", "Last" },
-            labels(Resolve.rows(items, contexts.paging, lookup, opts))
-        )
-        assert.same(
-            { "Both", "Reader action", "--", "EPUB only", "--", "Reader scoped", "--", "Last" },
-            labels(Resolve.rows(items, contexts.rolling, lookup, opts))
+            { "Both", "Reader action", "--", "Reader scoped", "--", "Last" },
+            labels(Resolve.rows(items, contexts.reader, lookup, opts))
         )
     end)
 
     it("dims unavailable rows instead of hiding them when asked", function()
         local rows = Resolve.rows(items, contexts.fm, lookup, { hide_unavailable = false })
-        assert.same({ "Both", "Reader action", "--", "PDF only", "EPUB only", "--", "FM scoped", "Last" }, labels(rows))
+        assert.same({ "Both", "Reader action", "--", "FM scoped", "Last" }, labels(rows))
         assert.is_true(rows[2].dim)
         assert.is_false(Resolve.actionable(rows[2]))
         assert.is_true(Resolve.actionable(rows[1]))

@@ -54,49 +54,31 @@ function Dialogs.info(text, timeout)
 end
 
 --[[--
-A ButtonDialog of choices, `per_row` per row (default 1).
+A ButtonDialog with one choice per row.
 choices: { { text, value, enabled? }, … }
 callback(value) on choice; on_cancel() when dismissed.
 ]]
 function Dialogs.choose(args, callback)
     local ButtonDialog = require("ui/widget/buttondialog")
     local dialog
-    local buttons, row = {}, {}
-    local per_row = args.per_row or 1
+    local buttons = {}
     for _, choice in ipairs(args.choices) do
-        table.insert(row, {
-            text = choice.text,
-            enabled = choice.enabled ~= false,
-            align = per_row == 1 and "left" or nil,
-            callback = function()
-                UIManager:close(dialog)
-                callback(choice.value)
-            end,
-        })
-        if #row == per_row then
-            table.insert(buttons, row)
-            row = {}
-        end
-    end
-    if #row > 0 then table.insert(buttons, row) end
-    for _, extra in ipairs(args.extra_rows or {}) do
-        local r = {}
-        for _, b in ipairs(extra) do
-            table.insert(r, {
-                text = b.text,
+        table.insert(buttons, {
+            {
+                text = choice.text,
+                enabled = choice.enabled ~= false,
+                align = "left",
                 callback = function()
                     UIManager:close(dialog)
-                    b.callback()
+                    callback(choice.value)
                 end,
-            })
-        end
-        table.insert(buttons, r)
+            },
+        })
     end
     dialog = ButtonDialog:new {
         title = args.title,
         title_align = "center",
         buttons = buttons,
-        rows_per_page = args.rows_per_page,
         tap_close_callback = args.on_cancel,
     }
     UIManager:show(dialog)

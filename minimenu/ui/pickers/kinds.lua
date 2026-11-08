@@ -43,7 +43,6 @@ local function contextFor(target)
     local ctx = target.ctx or Context.current()
     return {
         ui = ctx.ui,
-        context = ctx,
         name = ctx.name,
         menu_id = target.menu_id,
     }

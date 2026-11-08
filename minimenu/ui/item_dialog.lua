@@ -20,18 +20,9 @@ ItemDialog.SCOPES = {
     { value = "filemanager", text = _("File browser") },
 }
 
---- Looks in `menu_id` first, then in every menu.
-local function locate(menu_id, item_id)
-    local menu, item, list, index, ancestors = Store.findItem(item_id, menu_id)
-    if not item then
-        menu, item, list, index, ancestors = Store.findItem(item_id)
-    end
-    return menu, item, list, index, ancestors
-end
-
 --- Calls fn(item) and saves, unless the item is gone or fn returns false.
 local function update(menu_id, item_id, fn)
-    local menu, item = locate(menu_id, item_id)
+    local menu, item = Store.findItem(item_id, menu_id)
     if not menu or fn(item) == false then return end
     Store.itemChanged(menu.id)
 end
@@ -43,9 +34,8 @@ local function problem(item, info)
     if not info.available then return _("Not available here") end
 end
 
---- Why an item may not show in `ctx`, or nil.
-function ItemDialog.marker(item, ctx)
-    local info = Resolve.inspect(item, ctx, Kinds.get)
+--- Why an item may not show here, or nil. `info` is its Resolve.inspect.
+function ItemDialog.marker(item, info)
     if info.orphan then return problem(item, info) end
     if item.scope == "reader" then return _("Reader only") end
     if item.scope == "filemanager" then return _("File browser only") end
@@ -54,7 +44,7 @@ end
 
 function ItemDialog.rename(menu_id, item_id, ctx)
     local Dialogs = require("minimenu/ui/dialogs")
-    local _menu, item = locate(menu_id, item_id)
+    local _menu, item = Store.findItem(item_id, menu_id)
     if not item then return end
     -- Without the custom label, to hint the default name.
     local info = Resolve.inspect({ kind = item.kind, data = item.data, id = item.id }, ctx, Kinds.get)
@@ -116,7 +106,7 @@ function ItemDialog.secondaryGlyph(secondary)
 end
 
 function ItemDialog.delete(menu_id, item_id)
-    local m, item = locate(menu_id, item_id)
+    local m, item = Store.findItem(item_id, menu_id)
     if not m then return end
     local function doit()
         Store.editItems(m.id, function(items)
@@ -136,7 +126,7 @@ function ItemDialog.delete(menu_id, item_id)
 end
 
 function ItemDialog.duplicate(menu_id, item_id)
-    local m = locate(menu_id, item_id)
+    local m = Store.findItem(item_id, menu_id)
     if not m then return end
     Store.editItems(m.id, function(items)
         local item, list, index = model.find(items, item_id)
@@ -155,7 +145,7 @@ end
 
 function ItemDialog.chooseScope(menu_id, item_id)
     local Dialogs = require("minimenu/ui/dialogs")
-    local _menu, item = locate(menu_id, item_id)
+    local _menu, item = Store.findItem(item_id, menu_id)
     if not item then return end
     local choices = {}
     for _i, s in ipairs(ItemDialog.SCOPES) do
@@ -209,13 +199,13 @@ end
 
 function ItemDialog.showMove(menu_id, item_id, ctx)
     ctx = ctx or Context.current()
-    local menu = locate(menu_id, item_id)
+    local menu = Store.findItem(item_id, menu_id)
     if not menu then return end
     menu_id = menu.id
     local dialog, unsubscribe
 
     local function position()
-        local _m, item, list, index, ancestors = locate(menu_id, item_id)
+        local _m, item, list, index, ancestors = Store.findItem(item_id, menu_id)
         if not item then return nil end
         return item, list, index, ancestors and ancestors[#ancestors]
     end
@@ -387,7 +377,7 @@ end
 --- `ctx` is the popup's context, or nil for the current one.
 function ItemDialog.show(menu_id, item_id, ctx)
     ctx = ctx or Context.current()
-    local menu, item = locate(menu_id, item_id)
+    local menu, item = Store.findItem(item_id, menu_id)
     if not (menu and item) then return end
     menu_id = menu.id
     local provider = Kinds.get(item.kind)
@@ -509,7 +499,7 @@ end
 
 function ItemDialog.showSecondary(menu_id, item_id, ctx)
     ctx = ctx or Context.current()
-    local menu, item = locate(menu_id, item_id)
+    local menu, item = Store.findItem(item_id, menu_id)
     if not (menu and item and item.secondary) then return end
     menu_id = menu.id
     local title = _("Second action")

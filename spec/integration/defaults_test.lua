@@ -79,7 +79,7 @@ test("folder chevrons are vertically centred, at any text size", function()
         local panel = H.popup().chain[1].panel
         local r = panel:rowRect(H.rowIndex(1, "Device"))
         local center = r.y + (r.h - 1) / 2
-        local chevron = inkCenter(r, r.x + r.w - panel.cfg.trail_col - panel.cfg.pad, r.x + r.w - 1)
+        local chevron = inkCenter(r, r.x + r.w - panel.cfg.icon_col - panel.cfg.pad, r.x + r.w - 1)
         assert(
             math.abs(chevron - center) <= 1,
             ("size %s: chevron at %.1f, row centre %.1f"):format(size, chevron, center)

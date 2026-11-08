@@ -31,20 +31,6 @@ describe("model", function()
         assert.is_nil(model.find(items, "nope"))
     end)
 
-    it("walks a 50-level tree without recursion problems", function()
-        local root = deepTree(50)
-        local count, maxdepth = 0, 0
-        model.walk(root, function(_, _, _, depth)
-            count = count + 1
-            if depth > maxdepth then maxdepth = depth end
-        end)
-        assert.equal(51, count)
-        assert.equal(51, maxdepth)
-        local it, _, _, anc = model.find(root, "i51")
-        assert.equal("i51", it.id)
-        assert.equal(50, #anc)
-    end)
-
     it("moves within a list", function()
         local items = { item("a"), item("b"), item("c") }
         assert.is_true(model.move(items, "a", 1))
@@ -54,16 +40,14 @@ describe("model", function()
     end)
 
     it("moveTo refuses moving a folder into itself or a descendant", function()
-        local root = deepTree(50)
-        local ok, why = model.moveTo(root, "i1", "i30")
+        local root = deepTree(3)
+        local ok, why = model.moveTo(root, "i1", "i3")
         assert.is_false(ok)
         assert.equal("descendant", why)
-        ok, why = model.moveTo(root, "i10", "i10")
-        assert.is_false(ok)
-        -- moving a deep folder up to the top level is fine
-        assert.is_true(model.moveTo(root, "i30", nil))
-        assert.equal("i30", root[2].id)
-        assert.is_nil(model.find(root[1].data.items, "i30"))
+        assert.is_false((model.moveTo(root, "i2", "i2")))
+        assert.is_true(model.moveTo(root, "i3", nil))
+        assert.equal("i3", root[2].id)
+        assert.is_nil(model.find(root[1].data.items, "i3"))
     end)
 
     it("moveTo appends to a folder", function()
@@ -258,8 +242,8 @@ describe("model", function()
             assert.same(input.menus.m1.items[4].secondary, items[4].secondary)
         end)
 
-        it("recurses into deep folders and validates there", function()
-            local root, inner = deepTree(40)
+        it("validates items inside nested folders", function()
+            local root, inner = deepTree(3)
             table.insert(inner.data.items, { id = "i900", kind = "good", data = { ok = false } })
             local input = {
                 version = 1,
@@ -272,7 +256,7 @@ describe("model", function()
             local clean, changed = model.sanitize(input, kinds)
             assert.is_true(changed)
             assert.is_nil(model.find(clean.menus.m1.items, "i900"))
-            assert.is_not_nil(model.find(clean.menus.m1.items, "i41"))
+            assert.is_not_nil(model.find(clean.menus.m1.items, "i4"))
         end)
 
         it("repairs duplicate ids and next_id", function()

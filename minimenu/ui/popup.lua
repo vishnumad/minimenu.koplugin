@@ -5,8 +5,6 @@ root, then one flyout per open folder or link.
 ]]
 
 local Device = require("device")
-local Font = require("ui/font")
-local FontList = require("fontlist")
 local Geom = require("ui/geometry")
 local GestureRange = require("ui/gesturerange")
 local InputContainer = require("ui/widget/container/inputcontainer")
@@ -19,6 +17,7 @@ local Screen = Device.screen
 local Anchor = require("minimenu/ui/anchor")
 local Context = require("minimenu/context")
 local Kinds = require("minimenu/kinds/init")
+local Metrics = require("minimenu/ui/metrics")
 local Panel = require("minimenu/ui/panel")
 local Resolve = require("minimenu/resolve")
 local Store = require("minimenu/store")
@@ -30,54 +29,13 @@ local Popup = InputContainer:extend {
     stop_events_propagation = true,
 }
 
---- Point size of row icons at the current text size and icon scale.
-function Popup.iconPoints()
-    return math.floor(Store.setting("font_size") * 1.1 * Store.setting("icon_scale") / 100 + 0.5)
-end
-
-local function textFont()
-    local font = Store.setting("font")
-    if font and FontList.fontinfo[font] then return font end
-    return "cfont"
-end
-
---- Metrics shared by all panels, from the appearance settings.
-function Popup.metrics()
-    local font_size = Store.setting("font_size")
-    local icon_pt = Popup.iconPoints()
-    local icon_size = Screen:scaleBySize(icon_pt)
-    -- Rows are at least 1.25x the icon height so scaled-up icons keep a margin.
-    local row_h = math.max(
-        Screen:scaleBySize(math.floor(font_size * Store.setting("row_spacing") + 0.5)),
-        math.ceil(icon_size * 1.25)
-    )
-    local pad = Screen:scaleBySize(Store.setting("padding"))
-    local face = Font:getFace(textFont(), font_size)
-    local shadow = Store.setting("shadow") and Screen:scaleBySize(3) or 0
-    return {
-        row_h = row_h,
-        sep_h = Screen:scaleBySize(9),
-        title_h = row_h,
-        pager_h = math.floor(row_h * 0.9),
-        border = Size.border.window,
-        -- Keeps the top and bottom corners of a one-row panel apart (Panel:uninvertCorners).
-        radius = math.min(Screen:scaleBySize(Store.setting("radius")), math.floor(row_h / 2)),
-        line = Size.line.medium,
-        focus_border = Size.border.thick * 2,
-        pad = pad,
-        icon_size = icon_size,
-        icon_col = icon_size + pad,
-        trail_col = icon_size + pad,
-        -- The second action's tap target: wider than the icon, even without padding.
-        side_col = icon_size + 2 * math.max(pad, Screen:scaleBySize(8)),
-        shadow = shadow,
-        margin = math.max(Screen:scaleBySize(Store.setting("edge_margin")), shadow),
-        offset = Screen:scaleBySize(12),
-        face = face,
-        title_face = face,
-        icon_face = Font:getFace("cfont", icon_pt),
-    }
-end
+local REBUILD_ON = {
+    items_changed = true,
+    menu_changed = true,
+    menu_renamed = true,
+    menu_deleted = true,
+    settings_changed = true,
+}
 
 local function union(a, b)
     if not a then return b end
@@ -102,7 +60,7 @@ function Popup:init()
     self.open_opts = self.open_opts or {}
     self.ctx = Context.current()
     self.ctx.menu_id = self.menu_id
-    self.cfg = Popup.metrics()
+    self.cfg = Metrics.get()
     self.chain = {}
     self.menu = Store.menu(self.menu_id)
     self.options = Store.options(self.menu)
@@ -146,16 +104,8 @@ function Popup:resolveRows(items)
     })
 end
 
-function Popup:widthBounds()
-    local sw = self.screen.w
-    return {
-        min_w = math.floor(sw * 0.3),
-        max_w = math.floor(sw * 0.8),
-    }
-end
-
 function Popup:maxPanelHeight()
-    return math.floor(self.screen.h * 0.7)
+    return math.min(math.floor(self.screen.h * 0.7), self.screen.h - 2 * self.cfg.margin)
 end
 
 function Popup:levelItems(k)
@@ -174,7 +124,7 @@ function Popup:buildLevel(k, page)
     local entry = self.chain[k] or {}
     self.chain[k] = entry
     local old = entry.panel
-    local bounds = self:widthBounds()
+    local bounds = Metrics.widthBounds(self.screen.w)
     entry.panel = Panel.new {
         rows = self:resolveRows(self:levelItems(k)),
         cfg = self.cfg,
@@ -215,14 +165,21 @@ function Popup:cascadeDirection()
     return self.direction or Anchor.cascadeDirection(self.chain[1].panel:rect(), self.screen)
 end
 
+--- A stacked card covers the row that opened it, so it gets a back header.
+-- Returns w, h
+function Popup:measureLevel(k)
+    local entry = self.chain[k]
+    if entry.mode == "stacked" then entry.panel.header = self:breadcrumb(k) end
+    return entry.panel:measure(self:maxPanelHeight())
+end
+
 --- The panel's parent must already be placed.
 function Popup:placeLevel(k)
     local entry = self.chain[k]
     local panel = entry.panel
     local cfg = self.cfg
-    local max_h = self:maxPanelHeight()
     if k == 1 then
-        local w, h = panel:measure(max_h)
+        local w, h = self:measureLevel(1)
         local args = self:anchorArgs()
         args.size, args.screen, args.margin, args.offset = { w = w, h = h }, self.screen, cfg.margin, cfg.offset
         args.position = self.options.position
@@ -232,39 +189,28 @@ function Popup:placeLevel(k)
     end
     local parent_entry = self.chain[k - 1]
     local parent = parent_entry.panel
-    local row_rect = parent:rowRect(parent_entry.open_index)
     self.direction = self:cascadeDirection()
-    panel.header = nil
-    local w = panel:measure(max_h)
-    local bounds = self:widthBounds()
     local avoid = {}
     for j = 1, k - 2 do
         table.insert(avoid, self.chain[j].panel:rect())
     end
-    local x, fw, mode = Anchor.flyoutX {
+    local x, w
+    x, w, entry.mode = Anchor.flyoutX {
         parent = parent:rect(),
-        width = w,
+        width = (self:measureLevel(k)),
         screen = self.screen,
         margin = cfg.margin,
         direction = self.direction,
         overlap = cfg.border,
         indent = cfg.icon_col,
-        min_w = bounds.min_w,
+        min_w = Metrics.widthBounds(self.screen.w).min_w,
         avoid = avoid,
     }
-    entry.mode = mode
-    if mode == "stacked" then
-        -- The card covers the row that opened it: give it a back header.
-        panel.header = self:breadcrumb(k)
-    end
-    local _, h = panel:measure(max_h)
+    local _, h = self:measureLevel(k)
+    local row_rect = parent:rowRect(parent_entry.open_index)
     local top = row_rect and (row_rect.y - cfg.border) or parent.y
-    local y, fh = Anchor.flyoutY(top, h, self.screen, cfg.margin)
-    if fh < h then
-        _, h = panel:measure(fh)
-        y = Anchor.flyoutY(top, h, self.screen, cfg.margin)
-    end
-    panel:layout(x, y, fw, h)
+    local y = Anchor.flyoutY(top, h, self.screen, cfg.margin)
+    panel:layout(x, y, w, h)
 end
 
 function Popup:chainRect(from)
@@ -349,7 +295,7 @@ function Popup:runContext(k)
         self:refreshLevel(k)
         host.refreshed = true
     end
-    return { ui = self.ctx.ui, context = self.ctx, menu_id = self.menu_id, host = host }
+    return { ui = self.ctx.ui, menu_id = self.menu_id, host = host }
 end
 
 --- Closes the popup before running, so actions that replace the view (opening
@@ -391,19 +337,13 @@ function Popup:activate(k, index, part)
 end
 
 function Popup:refreshLevel(k)
-    local before = self.chain[k].panel:dirtyRect()
-    local x, y = self.chain[k].panel.x, self.chain[k].panel.y
+    local old = self.chain[k].panel
+    local before, x, y = old:dirtyRect(), old.x, old.y
     -- Only called after an action ran, which may have changed the submenus it lives in.
     require("minimenu/menupath/live").forgetSubmenus(self.ctx)
     self:buildLevel(k)
     local panel = self.chain[k].panel
-    local w, h = panel:measure(
-        k == 1 and self:maxPanelHeight() or math.min(self:maxPanelHeight(), self.screen.h - 2 * self.cfg.margin)
-    )
-    if k > 1 and self.chain[k].mode == "stacked" then
-        panel.header = self:breadcrumb(k)
-        w, h = panel:measure(self:maxPanelHeight())
-    end
+    local w, h = self:measureLevel(k)
     w = math.min(w, self.screen.w - self.cfg.margin - x)
     y = math.min(y, self.screen.h - self.cfg.margin - h)
     panel:layout(x, y, w, h)
@@ -447,10 +387,7 @@ function Popup:rebuild()
         end
         if not found then break end
         local page = parent.panel:pageOf(found)
-        if page ~= parent.panel.page then
-            parent.panel.page = page
-            parent.panel:layout(parent.panel.x, parent.panel.y, parent.panel.w, parent.panel.h)
-        end
+        if page ~= parent.panel.page then parent.panel:showPage(page) end
         parent.open_index, parent.open_part = found, parts[k]
         self.chain[k] = { row = opener, item_id = id, part = parts[k] }
         self:buildLevel(k, pages[k])
@@ -463,18 +400,10 @@ function Popup:rebuild()
 end
 
 function Popup:onStoreEvent(ev)
-    if self.closed then return end
+    if self.closed or not REBUILD_ON[ev.type] then return end
     if ev.type == "menu_deleted" and ev.menu_id == self.menu_id then return self:close() end
-    if
-        ev.type == "items_changed"
-        or ev.type == "menu_changed"
-        or ev.type == "menu_renamed"
-        or ev.type == "settings_changed"
-        or ev.type == "menu_deleted"
-    then
-        if ev.type == "settings_changed" then self.cfg = Popup.metrics() end
-        self:rebuild()
-    end
+    if ev.type == "settings_changed" then self.cfg = Metrics.get() end
+    self:rebuild()
 end
 
 function Popup:setPage(k, page)
@@ -482,8 +411,7 @@ function Popup:setPage(k, page)
     local panel = entry.panel
     if page < 1 or page > panel:pageCount() or page == panel.page then return false end
     self:closeFrom(k + 1)
-    panel.page = page
-    panel:layout(panel.x, panel.y, panel.w, panel.h)
+    panel:showPage(page)
     self:dirty(panel:dirtyRect())
     return true
 end
@@ -655,10 +583,7 @@ function Popup:moveFocus(step)
     end
     if entry.focus then
         local page = panel:pageOf(entry.focus)
-        if page and page ~= panel.page then
-            panel.page = page
-            panel:layout(panel.x, panel.y, panel.w, panel.h)
-        end
+        if page and page ~= panel.page then panel:showPage(page) end
     end
     self:dirty(union(before, panel:dirtyRect()))
     return true

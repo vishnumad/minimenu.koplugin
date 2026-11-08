@@ -51,7 +51,7 @@ Store.editItems(quick.id, function(items)
     table.insert(items, act("toc"))
     table.insert(items, act("toggle_page_flipping")) -- paging only
     table.insert(items, act("toggle_style_tweaks")) -- rolling only
-    table.insert(items, item("plugin", { name = "kosync", doc_only = true }))
+    table.insert(items, item("plugin", { name = "kosync" }))
     table.insert(items, item("plugin", { name = "statistics" }))
     table.insert(
         items,
@@ -67,7 +67,7 @@ local reader_tools = Store.createMenu("Reader tools")
 Store.editItems(reader_tools.id, function(items)
     table.insert(items, act("toc"))
     table.insert(items, act("bookmarks"))
-    table.insert(items, item("plugin", { name = "kosync", doc_only = true }))
+    table.insert(items, item("plugin", { name = "kosync" }))
     return true
 end)
 
@@ -91,7 +91,7 @@ test("FM hides reader-only targets, keeps the rest", function()
         if row.item and row.item.data.name == "kosync" then kosync_shown = true end
     end
     eq(false, kosync_shown, "is_doc_only plugin hidden in FM")
-    H.shot("p1_quick_fm")
+    H.shot("kinds_quick_fm")
 end)
 
 test("dimming instead of hiding shows reader-only rows inert", function()
@@ -108,7 +108,7 @@ test("dimming instead of hiding shows reader-only rows inert", function()
     end
     H.tap(H.rowCenter(1, idx))
     eq(true, not p.closed, "tapping a dimmed row does nothing")
-    H.shot("p1_quick_fm_dimmed")
+    H.shot("kinds_quick_fm_dimmed")
     Store.setOption(quick.id, "hide_unavailable", true)
 end)
 
@@ -123,7 +123,7 @@ test("menu-entry toggle flips in place (keep_open)", function()
     eq(true, not p.closed, "popup stays open")
     eq(true, G_reader_settings:isTrue("night_mode"), "night mode toggled")
     eq(true, p.chain[1].panel.rows[H.rowIndex(1, "Night mode")].checked, "checkbox updated")
-    H.shot("p1_toggle_on")
+    H.shot("kinds_toggle_on")
     H.tap(H.rowCenter(1, H.rowIndex(1, "Night mode")))
     eq(false, G_reader_settings:isTrue("night_mode"))
 end)
@@ -180,7 +180,7 @@ test("a captured page opens in a hosted TouchMenu", function()
     local tm = top[1]
     assert(tm and tm.item_table, "TouchMenu host shown")
     eq("Wi-Fi connection", tm.item_table[1].text_func and tm.item_table[1].text_func() or tm.item_table[1].text)
-    H.shot("p1_hosted_page")
+    H.shot("kinds_hosted_page")
     tm:closeMenu()
     H.drain()
 end)
@@ -213,7 +213,7 @@ test("a reader-tools menu in the FM shows the placeholder", function()
     API.open(reader_tools.id)
     H.drain()
     eq({ "<Nothing here in the file browser>" }, labels())
-    H.shot("p1_placeholder_fm")
+    H.shot("kinds_placeholder_fm")
 end)
 
 test("plugin picker offers is_doc_only plugins from the FM", function()
@@ -226,7 +226,6 @@ test("plugin picker offers is_doc_only plugins from the FM", function()
     end
     assert(found, "kosync offered")
     eq(true, found.reader_only)
-    eq(true, found.data.doc_only)
     eq(nil, self_listed)
 end)
 
@@ -264,7 +263,7 @@ test("capture picker drills lazily and captures a leaf with its path", function(
     choose("Settings")
     choose("Network")
     eq("Settings \u{203A} Network", menu.title_bar.title_widget.text)
-    H.shot("p1_capture_picker")
+    H.shot("kinds_capture_picker")
     choose("Wi-Fi connection")
     assert(got, "captured")
     eq("setting", got.path[1].id)
@@ -313,7 +312,7 @@ test("EPUB: reader items shown, PDF-only hidden", function()
         if row.item and row.item.data.name == "kosync" then kosync = true end
     end
     eq(true, kosync, "doc-only plugin shown in reader")
-    H.shot("p1_quick_epub")
+    H.shot("kinds_quick_epub")
 end)
 
 test("a greyed-out reader entry stays visible (dimmed) as the first row", function()
@@ -437,7 +436,7 @@ test("a captured entry still resolves after the value in its label changes", fun
         local rows = H.popup().chain[1].panel.rows
         eq(batteryLabel(50), rows[1].label)
         eq(true, rows[1].available)
-        H.shot("p1_value_label")
+        H.shot("kinds_value_label")
         API.close()
         H.drain()
 
@@ -487,7 +486,7 @@ test("an entry that applies its value later refreshes the open popup", function(
         eq(50, settings.battery_hide_threshold)
         eq(true, not p.closed, "popup still open")
         eq({ batteryLabel(50) }, labels(), "row shows the applied value")
-        H.shot("p1_applied_later")
+        H.shot("kinds_applied_later")
 
         H.tap(H.rowCenter(1, 1))
         sw = H.top()
@@ -519,7 +518,7 @@ test("a toggle that closes KOReader's menu closes the popup", function()
     eq(true, reader.paging.bookmark_flipping_mode, "flipping mode on")
     eq(true, p.closed, "popup closed")
     eq(nil, H.popup())
-    H.shot("p1_closes_menu")
+    H.shot("kinds_closes_menu")
     reader.paging:onToggleBookmarkFlipping()
     H.drain()
     Store.deleteMenu(m.id)

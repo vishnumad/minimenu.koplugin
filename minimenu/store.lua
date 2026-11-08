@@ -4,6 +4,7 @@ Persistent store, shared by every plugin instance through package.loaded.
 backend = { read = function() → table|nil, write = function(data) }
 ]]
 
+local logger = require("logger")
 local model = require("minimenu/model")
 
 local Store = {
@@ -11,6 +12,8 @@ local Store = {
     backend = nil,
     -- "unreadable" | "newer": never save over the file this session.
     readonly = nil,
+    -- The last save failed; FlushSettings retries it.
+    dirty = false,
     listeners = {},
     -- migrations[n] is a pure function(data) → data from version n to n + 1.
     migrations = {},
@@ -35,11 +38,6 @@ Store.DEFAULT_SETTINGS = {
     radius = 5,
     shadow = true,
 }
-
-local function log(level, ...)
-    local ok, logger = pcall(require, "logger")
-    if ok and logger and logger[level] then logger[level]("MiniMenu:", ...) end
-end
 
 function Store.fileBackend(path)
     if not path then
@@ -93,7 +91,7 @@ function Store.migrate(data)
     while version < Store.CURRENT_VERSION do
         local step = Store.migrations[version]
         if not step then
-            log("warn", "no migration from schema version", version)
+            logger.warn("MiniMenu: no migration from schema version", version)
             break
         end
         data = step(data)
@@ -109,37 +107,31 @@ end
 -- settings exist yet, to create the starting menus.
 function Store.load(kinds, seed)
     Store.kinds = kinds or Store.kinds
-    if not Store.backend then Store.backend = Store.fileBackend() end
+    Store.backend = Store.backend or Store.fileBackend()
     Store.readonly = nil
     local ok, raw = pcall(Store.backend.read)
     if not ok then
-        log("err", "could not read settings:", raw)
+        logger.err("MiniMenu: could not read settings:", raw)
         Store.readonly = "unreadable"
-        raw = nil
     end
-    local data, changed
-    if type(raw) ~= "table" then
-        data, changed = model.empty(), false
+    if not ok or type(raw) ~= "table" then
+        local data = model.empty()
+        Store.data = data
         if ok and raw == nil and seed then
-            Store.data = data
             local seeded, err = pcall(seed)
-            if not seeded then log("err", "could not create the default menu:", err) end
-            return data
+            if not seeded then logger.err("MiniMenu: could not create the default menu:", err) end
         end
-    else
-        if type(raw.version) == "number" and raw.version > Store.CURRENT_VERSION then
-            log("warn", "settings use a newer schema version", raw.version, "than this MiniMenu", Store.CURRENT_VERSION)
-            Store.readonly = "newer"
-        end
-        local migrated
-        data, migrated = Store.migrate(raw)
-        local sanitized
-        data, sanitized = model.sanitize(data, Store.kinds)
-        changed = migrated or sanitized
+        return data
     end
-    Store.data = data
-    if changed then Store.save() end
-    return data
+    if type(raw.version) == "number" and raw.version > Store.CURRENT_VERSION then
+        logger.warn("MiniMenu: settings use a newer schema version", raw.version, "than", Store.CURRENT_VERSION)
+        Store.readonly = "newer"
+    end
+    local data, migrated = Store.migrate(raw)
+    local clean, sanitized = model.sanitize(data, Store.kinds)
+    Store.data = clean
+    if migrated or sanitized then Store.save() end
+    return clean
 end
 
 function Store.get()
@@ -149,9 +141,13 @@ end
 function Store.save()
     if not Store.data or Store.readonly then return end
     local ok, err = pcall(Store.backend.write, Store.data)
-    -- A failed write is retried on the next FlushSettings.
     Store.dirty = not ok
-    if not ok then log("err", "could not save settings:", err) end
+    if not ok then logger.err("MiniMenu: could not save settings:", err) end
+end
+
+local function commit(event)
+    Store.save()
+    Store.emit(event)
 end
 
 --- Listeners get one event per change: { type = "...", menu_id = ..., ... }
@@ -170,7 +166,7 @@ end
 function Store.emit(event)
     for _, fn in ipairs({ unpack(Store.listeners) }) do
         local ok, err = pcall(fn, event)
-        if not ok then log("err", "listener failed:", err) end
+        if not ok then logger.err("MiniMenu: listener failed:", err) end
     end
 end
 
@@ -227,8 +223,7 @@ function Store.setSetting(key, value)
     data.settings = data.settings or {}
     if value == Store.DEFAULT_SETTINGS[key] then value = nil end
     data.settings[key] = value
-    Store.save()
-    Store.emit({ type = "settings_changed", key = key })
+    commit({ type = "settings_changed" })
 end
 
 --- `fields` overrides the new menu's fields before listeners hear of it.
@@ -247,8 +242,7 @@ function Store.createMenu(title, items, fields)
     end
     data.menus[id] = menu
     table.insert(data.menu_order, id)
-    Store.save()
-    Store.emit({ type = "menu_created", menu_id = id })
+    commit({ type = "menu_created", menu_id = id })
     return menu
 end
 
@@ -256,8 +250,7 @@ function Store.renameMenu(id, title)
     local menu = Store.menu(id)
     if not menu or menu.title == title then return false end
     menu.title = title
-    Store.save()
-    Store.emit({ type = "menu_renamed", menu_id = id })
+    commit({ type = "menu_renamed", menu_id = id })
     return true
 end
 
@@ -272,8 +265,7 @@ function Store.deleteMenu(id)
             break
         end
     end
-    Store.save()
-    Store.emit({ type = "menu_deleted", menu_id = id, menu = menu })
+    commit({ type = "menu_deleted", menu_id = id })
     return true
 end
 
@@ -281,8 +273,7 @@ function Store.setRegisterAction(id, value)
     local menu = Store.menu(id)
     if not menu then return end
     menu.register_action = value and true or false
-    Store.save()
-    Store.emit({ type = "menu_action_changed", menu_id = id })
+    commit({ type = "menu_action_changed", menu_id = id })
 end
 
 function Store.setOption(id, key, value)
@@ -290,8 +281,7 @@ function Store.setOption(id, key, value)
     if not menu then return end
     menu.options = menu.options or {}
     menu.options[key] = value
-    Store.save()
-    Store.emit({ type = "menu_changed", menu_id = id, key = key })
+    commit({ type = "menu_changed", menu_id = id })
 end
 
 function Store.duplicateMenu(id, title)
@@ -313,24 +303,17 @@ function Store.editItems(menu_id, fn)
     local menu = Store.menu(menu_id)
     if not menu then return nil end
     local result = { fn(menu.items, menu) }
-    if result[1] then
-        Store.save()
-        Store.emit({ type = "items_changed", menu_id = menu_id })
-    end
+    if result[1] then commit({ type = "items_changed", menu_id = menu_id }) end
     return unpack(result)
 end
 
---- Searches every menu when `menu_id` is nil.
+--- Looks in `menu_id` first, then in every menu.
 -- Returns menu, item, list, index, ancestors
 function Store.findItem(item_id, menu_id)
-    if menu_id then
-        local menu = Store.menu(menu_id)
-        if not menu then return nil end
-        local item, list, index, ancestors = model.find(menu.items, item_id)
-        if item then return menu, item, list, index, ancestors end
-        return nil
-    end
-    for _, menu in ipairs(Store.menus()) do
+    local menus = Store.menus()
+    local preferred = Store.menu(menu_id)
+    if preferred then table.insert(menus, 1, preferred) end
+    for _, menu in ipairs(menus) do
         local item, list, index, ancestors = model.find(menu.items, item_id)
         if item then return menu, item, list, index, ancestors end
     end
@@ -338,8 +321,7 @@ end
 
 --- Save and notify after changing an item's fields in place.
 function Store.itemChanged(menu_id)
-    Store.save()
-    Store.emit({ type = "items_changed", menu_id = menu_id })
+    commit({ type = "items_changed", menu_id = menu_id })
 end
 
 return Store

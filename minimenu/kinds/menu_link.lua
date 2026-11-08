@@ -1,6 +1,6 @@
 local _ = require("gettext")
 
-local LINK_ICON = "\u{F0C9}"
+local ICON = "\u{F0C9}"
 
 local function target(item)
     local Store = require("minimenu/store")
@@ -12,6 +12,7 @@ return {
     title = _("Link to another menu"),
     order = 50,
     action = true,
+    ICON = ICON,
 
     pick = function(ctx, done)
         require("minimenu/ui/pickers/menus").pick({
@@ -19,11 +20,7 @@ return {
             exclude = ctx.menu_id,
             warn_cycle_from = ctx.menu_id,
         }, function(menu_id)
-            if menu_id then
-                done({ menu = menu_id })
-            else
-                done(nil)
-            end
+            done(menu_id and { menu = menu_id })
         end)
     end,
 
@@ -33,10 +30,10 @@ return {
 
     resolve = function(item)
         local menu = target(item)
-        if not menu then return { label = _("Missing menu"), icon = LINK_ICON, available = false } end
+        if not menu then return { label = _("Missing menu"), icon = ICON, available = false } end
         return {
             label = menu.title,
-            icon = LINK_ICON,
+            icon = ICON,
             available = true,
             title = menu.title,
             menu_id = menu.id,

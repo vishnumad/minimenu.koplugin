@@ -49,6 +49,18 @@ function Util.utf8char(cp)
     )
 end
 
+--- Drop the items `isSeparator` picks out where they would lead, trail or repeat.
+function Util.tidySeparators(list, isSeparator)
+    local out = {}
+    for _, v in ipairs(list) do
+        if not isSeparator(v) or (#out > 0 and not isSeparator(out[#out])) then table.insert(out, v) end
+    end
+    while #out > 0 and isSeparator(out[#out]) do
+        table.remove(out)
+    end
+    return out
+end
+
 function Util.trim(s)
     if type(s) ~= "string" then return s end
     return (s:gsub("^%s+", ""):gsub("%s+$", ""))

@@ -1,4 +1,5 @@
 local Store = require("minimenu/store")
+local Support = require("spec/support")
 local Warm = require("minimenu/warm")
 
 local function item(kind, data, fields)
@@ -37,8 +38,7 @@ end
 
 describe("warm-up", function()
     before_each(function()
-        Store.setBackend(Store.memoryBackend(nil))
-        Store.listeners = {}
+        Support.memoryStore()
         Store.load()
         Warm.opened = { reader = {}, filemanager = {} }
     end)

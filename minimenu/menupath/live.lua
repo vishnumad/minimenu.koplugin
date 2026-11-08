@@ -1,13 +1,9 @@
 -- Reads and replays the active UI's main menu.
 
 local Walk = require("minimenu/menupath/walk")
+local logger = require("logger")
 
 local Live = {}
-
-local function logErr(...)
-    local ok, logger = pcall(require, "logger")
-    if ok and logger then logger.err("MiniMenu:", ...) end
-end
 
 local function buildTree(ui)
     local menu = ui and ui.menu
@@ -16,7 +12,7 @@ local function buildTree(ui)
         -- Never rebuild an existing table: setUpdateItemTable mutates menu_items.
         local ok, err = pcall(menu.setUpdateItemTable, menu)
         if not ok then
-            logErr("could not build the main menu:", err)
+            logger.err("MiniMenu: could not build the main menu:", err)
             return nil
         end
     end
@@ -79,7 +75,7 @@ function Live.openPage(node)
     local kids, err = Walk.children(node)
     if not kids and type(node) == "table" and #node > 0 then kids = node end
     if not kids then
-        logErr("could not open menu page:", err)
+        logger.err("MiniMenu: could not open menu page:", err)
         return false
     end
     require("minimenu/menupath/host").show(kids)

@@ -8,14 +8,11 @@ row. They can be a row's second action (`item.secondary = { kind, data,
 icon }`), and an item's action can be changed to any of them.
 ]]
 
+local logger = require("logger")
+
 local Kinds = {
     providers = {},
 }
-
-local function logWarn(...)
-    local ok, logger = pcall(require, "logger")
-    if ok and logger then logger.warn("MiniMenu:", ...) end
-end
 
 --- Registers or replaces a kind. Returns true, or false and a reason.
 function Kinds.register(provider)
@@ -25,7 +22,7 @@ function Kinds.register(provider)
     end
     if type(provider.resolve) ~= "function" then return false, "provider.resolve must be a function" end
     if Kinds.providers[provider.name] and Kinds.providers[provider.name] ~= provider then
-        logWarn("replacing item kind", provider.name)
+        logger.warn("MiniMenu: replacing item kind", provider.name)
     end
     Kinds.providers[provider.name] = provider
     return true
@@ -56,12 +53,7 @@ end
 function Kinds.registerBuiltins()
     if Kinds.builtins_registered then return end
     for _, name in ipairs({ "separator", "dispatcher", "menu_item", "plugin", "folder", "menu_link" }) do
-        local ok, provider = pcall(require, "minimenu/kinds/" .. name)
-        if ok then
-            Kinds.register(provider)
-        else
-            logWarn("could not load kind", name, provider)
-        end
+        Kinds.register(require("minimenu/kinds/" .. name))
     end
     Kinds.builtins_registered = true
 end

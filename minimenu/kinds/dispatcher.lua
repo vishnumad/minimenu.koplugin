@@ -1,8 +1,5 @@
+local DispatchUtil = require("minimenu/dispatch")
 local _ = require("gettext")
-
-local function D()
-    return require("minimenu/dispatch")
-end
 
 return {
     name = "dispatcher",
@@ -12,11 +9,7 @@ return {
 
     pick = function(ctx, done)
         require("minimenu/ui/pickers/dispatcher").pick(ctx, function(action)
-            if action then
-                done({ action = action })
-            else
-                done(nil)
-            end
+            done(action and { action = action })
         end)
     end,
 
@@ -29,14 +22,12 @@ return {
     end,
 
     resolve = function(item)
-        local DU = D()
         local action = item.data.action
-        local available = DU.available(action)
         return {
-            label = DU.label(action),
-            available = available,
+            label = DispatchUtil.label(action),
+            available = DispatchUtil.available(action),
             run = function()
-                DU.dispatcher():execute(action)
+                DispatchUtil.dispatcher():execute(action)
             end,
         }
     end,

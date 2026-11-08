@@ -33,17 +33,15 @@ describe("anchor", function()
     end)
 
     it("opens centred without a gesture, and ignores the point for fixed positions", function()
-        local r, how = Anchor.placeRoot { size = size, screen = screen, margin = 10, position = "gesture" }
-        assert.equal("fixed", how)
+        local r = Anchor.placeRoot { size = size, screen = screen, margin = 10, position = "gesture" }
         assert.same({ x = 200, y = 250, w = 200, h = 300 }, r)
-        r, how = Anchor.placeRoot {
+        r = Anchor.placeRoot {
             size = size,
             screen = screen,
             margin = 10,
             position = "bottom",
             point = { x = 1, y = 1 },
         }
-        assert.equal("fixed", how)
         assert.equal(490, r.y)
     end)
 
@@ -66,7 +64,7 @@ describe("anchor", function()
 
     it("puts a flyout side by side, flips, then stacks", function()
         local parent = { x = 10, y = 100, w = 200, h = 300 }
-        local x, w, mode, side = Anchor.flyoutX {
+        local x, w, mode = Anchor.flyoutX {
             parent = parent,
             width = 200,
             screen = screen,
@@ -76,9 +74,9 @@ describe("anchor", function()
             indent = 30,
             min_w = 150,
         }
-        assert.same({ 208, 200, "side", "right" }, { x, w, mode, side })
+        assert.same({ 208, 200, "side" }, { x, w, mode })
         parent = { x = 300, y = 100, w = 200, h = 300 }
-        x, w, mode, side = Anchor.flyoutX {
+        x, w, mode = Anchor.flyoutX {
             parent = parent,
             width = 200,
             screen = screen,
@@ -88,7 +86,7 @@ describe("anchor", function()
             indent = 30,
             min_w = 150,
         }
-        assert.same({ 102, 200, "side", "left" }, { x, w, mode, side })
+        assert.same({ 102, 200, "side" }, { x, w, mode })
         parent = { x = 150, y = 100, w = 300, h = 300 }
         x, w, mode = Anchor.flyoutX {
             parent = parent,
@@ -121,7 +119,7 @@ describe("anchor", function()
         }
         assert.equal("stacked", mode)
         -- without the ancestor it would have flipped right
-        local _, _, mode2, side2 = Anchor.flyoutX {
+        local x2, _, mode2 = Anchor.flyoutX {
             parent = parent,
             width = 180,
             screen = screen,
@@ -131,7 +129,7 @@ describe("anchor", function()
             indent = 30,
             min_w = 150,
         }
-        assert.same({ "side", "right" }, { mode2, side2 })
+        assert.same({ parent.x + parent.w - 2, "side" }, { x2, mode2 })
         assert.is_true(x + w <= parent.x + parent.w - 30 + 0.5 or w < 180)
     end)
 

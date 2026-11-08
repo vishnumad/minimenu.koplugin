@@ -3,6 +3,7 @@
 
 local Actions = require("minimenu/actions")
 local Store = require("minimenu/store")
+local logger = require("logger")
 local model = require("minimenu/model")
 
 local Warm = {
@@ -19,11 +20,6 @@ local SOURCES = {
 }
 
 local pending
-
-local function log(level, ...)
-    local ok, logger = pcall(require, "logger")
-    if ok and logger then logger[level]("MiniMenu:", ...) end
-end
 
 local function boundIds(out, actions)
     if type(actions) ~= "table" then return out end
@@ -51,7 +47,7 @@ function Warm.roots(ui, scope)
                     boundIds(roots, actions)
                 end
             elseif bindings ~= nil or not src.optional then
-                log("dbg", "can't read", src.plugin .. "." .. src.field .. ", counting every menu as bound")
+                logger.dbg("MiniMenu: can't read", src.plugin .. "." .. src.field .. ", counting every menu as bound")
                 allWithActions(roots)
             end
         end
@@ -83,21 +79,22 @@ function Warm.needsTree(roots, scope)
             end
         end
     end
+    local function scan(items)
+        for _, item in ipairs(items) do
+            if not item.scope or item.scope == scope then
+                if visit(item) or visit(item.secondary) then return true end
+                local kids = model.children(item)
+                if kids and scan(kids) then return true end
+            end
+        end
+        return false
+    end
     for id in pairs(roots) do
         enqueue(id)
     end
     while #queue > 0 do
         local menu = Store.menu(table.remove(queue))
-        local stack = { menu and menu.items }
-        while #stack > 0 do
-            for _, item in ipairs(table.remove(stack)) do
-                if not item.scope or item.scope == scope then
-                    if visit(item) or visit(item.secondary) then return true end
-                    local kids = model.children(item)
-                    if kids then table.insert(stack, kids) end
-                end
-            end
-        end
+        if menu and scan(menu.items) then return true end
     end
     return false
 end
@@ -110,11 +107,11 @@ function Warm.run(ui)
     local Live = require("minimenu/menupath/live")
     local scope = ui.document and "reader" or "filemanager"
     if Live.built(ui) then
-        log("dbg", "main menu already built in the", scope)
+        logger.dbg("MiniMenu: main menu already built in the", scope)
     elseif not Warm.needsTree(Warm.roots(ui, scope), scope) then
-        log("dbg", "no menu in use needs the main menu in the", scope)
+        logger.dbg("MiniMenu: no menu in use needs the main menu in the", scope)
     else
-        log("dbg", Live.warm(ui) and "built" or "could not build", "the main menu on idle in the", scope)
+        logger.dbg("MiniMenu:", Live.warm(ui) and "built" or "could not build", "the main menu on idle in the", scope)
     end
 end
 
@@ -134,7 +131,7 @@ function Warm.schedule(ui)
         end
         Warm.cancel(ui)
         local ok, err = pcall(Warm.run, ui)
-        if not ok then log("err", "warm-up failed:", err) end
+        if not ok then logger.err("MiniMenu: warm-up failed:", err) end
     end
     UIManager.event_hook:register("InputEvent", p.hook)
     UIManager:scheduleIn(Warm.IDLE, p.task)

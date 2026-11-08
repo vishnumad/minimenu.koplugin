@@ -11,14 +11,12 @@ run, keep_open, children, title, menu_id, dim }, hidden or dimmed the same way.
 `kinds` is a function(name) → provider.
 ]]
 
+local Util = require("minimenu/util")
+local logger = require("logger")
+
 local Resolve = {}
 
 Resolve.GEAR = "\u{F013}" -- cog
-
-local function logErr(...)
-    local ok, logger = pcall(require, "logger")
-    if ok and logger then logger.err("MiniMenu:", ...) end
-end
 
 --- nil when the item is out of scope or its kind isn't installed.
 function Resolve.item(item, ctx, kinds)
@@ -27,7 +25,7 @@ function Resolve.item(item, ctx, kinds)
     if not provider then return nil end
     local ok, row = pcall(provider.resolve, item, ctx)
     if not ok or type(row) ~= "table" then
-        logErr("resolving", item.kind, "item", item.id, "failed:", row)
+        logger.err("MiniMenu: resolving", item.kind, "item", item.id, "failed:", row)
         row = { label = item.label or item.kind, available = false }
     end
     if row.available == nil then row.available = true end
@@ -47,7 +45,7 @@ function Resolve.secondary(item, ctx, kinds)
     if not (provider and provider.action) then return nil end
     local ok, res = pcall(provider.resolve, { id = item.id, kind = s.kind, data = s.data }, ctx)
     if not ok or type(res) ~= "table" then
-        logErr("resolving the second action of item", item.id, "failed:", res)
+        logger.err("MiniMenu: resolving the second action of item", item.id, "failed:", res)
         res = { available = false }
     end
     return {
@@ -92,44 +90,21 @@ function Resolve.inspect(item, ctx, kinds)
     }
 end
 
---- Drop separators that would be leading, trailing or doubled.
-function Resolve.tidySeparators(rows)
-    local out = {}
-    for _, row in ipairs(rows) do
-        if row.separator then
-            if #out > 0 and not out[#out].separator then table.insert(out, row) end
-        else
-            table.insert(out, row)
-        end
-    end
-    while #out > 0 and out[#out].separator do
-        table.remove(out)
-    end
-    return out
-end
-
 --- opts.placeholder labels the inert row shown when no rows are left.
 function Resolve.rows(items, ctx, kinds, opts)
     opts = opts or {}
     local rows = {}
     for _, item in ipairs(items or {}) do
         local row = Resolve.item(item, ctx, kinds)
-        if row then
+        if row and (row.separator or row.available or not opts.hide_unavailable) then
             settleSecondary(row, opts)
-            if row.separator then
-                table.insert(rows, row)
-            elseif row.available and row.disabled then
-                row.dim = true
-                table.insert(rows, row)
-            elseif row.available then
-                table.insert(rows, row)
-            elseif not opts.hide_unavailable then
-                row.dim = true
-                table.insert(rows, row)
-            end
+            if not row.separator and (not row.available or row.disabled) then row.dim = true end
+            table.insert(rows, row)
         end
     end
-    rows = Resolve.tidySeparators(rows)
+    rows = Util.tidySeparators(rows, function(row)
+        return row.separator
+    end)
     if #rows == 0 then
         table.insert(rows, { placeholder = true, label = opts.placeholder or "", available = false, dim = true })
     end

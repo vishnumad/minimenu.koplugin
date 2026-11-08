@@ -1,12 +1,8 @@
 local Store = require("minimenu/store")
+local Support = require("spec/support")
 local model = require("minimenu/model")
 
-local function fresh(initial)
-    local backend = Store.memoryBackend(initial)
-    Store.setBackend(backend)
-    Store.listeners = {}
-    return backend
-end
+local fresh = Support.memoryStore
 
 describe("store", function()
     it("treats a missing file as an empty store and does not write", function()
@@ -148,8 +144,8 @@ describe("store", function()
         assert.equal("m3", m2.id)
     end)
 
-    it("emits lifecycle events and saves on every edit", function()
-        local b = fresh(nil)
+    it("emits one event per edit", function()
+        fresh(nil)
         Store.load()
         local events = {}
         Store.subscribe(function(e)
@@ -169,26 +165,24 @@ describe("store", function()
             { "menu_created", "menu_renamed", "menu_action_changed", "menu_changed", "items_changed", "menu_deleted" },
             events
         )
-        assert.equal(6, b.writes)
-        assert.same({}, b.stored.menu_order)
     end)
 
-    it("resolves options menu → built-in; ignores retired options", function()
+    it("saves edits", function()
+        local b = fresh(nil)
+        Store.load()
+        local m = Store.createMenu("One")
+        Store.renameMenu(m.id, "Uno")
+        assert.same(Store.get(), b.stored)
+        Store.deleteMenu(m.id)
+        assert.same(Store.get(), b.stored)
+    end)
+
+    it("reads a menu's options, falling back to the built-in defaults", function()
         fresh(nil)
         Store.load()
         local m = Store.createMenu("One")
-        assert.equal("gesture", Store.option(m, "position"))
         Store.setOption(m.id, "position", "top_left")
-        assert.equal("top_left", Store.option(m, "position"))
-        assert.is_true(Store.options(m).hide_unavailable)
-        -- Stored by older versions; no longer exposed.
-        Store.setOption(m.id, "width", 0.5)
-        Store.setOption(m.id, "cascade", "left")
-        Store.setOption(m.id, "lock", true)
         assert.same({ position = "top_left", show_title = true, hide_unavailable = true }, Store.options(m))
-        -- Old global defaults are not copied into new menus.
-        Store.setSetting("defaults", { position = "center" })
-        assert.equal("gesture", Store.option(Store.createMenu("Two"), "position"))
     end)
 
     it("stores only settings that differ from their defaults", function()

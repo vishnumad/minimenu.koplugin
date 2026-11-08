@@ -14,7 +14,7 @@ local BACK = "\u{E840}" -- chevron-left
 --[[--
 args:
     rows        resolved rows
-    cfg         shared metrics (see Popup.metrics)
+    cfg         shared metrics (see Metrics.get)
     title       title text (root), or nil
     header      breadcrumb text for a stacked flyout, or nil
     min_w, max_w, page
@@ -44,7 +44,7 @@ function Panel:rowHeight(row)
 end
 
 function Panel:titleHeight()
-    if self.header or self.title then return self.cfg.title_h end
+    if self.header or self.title then return self.cfg.row_h end
     return 0
 end
 
@@ -71,7 +71,7 @@ function Panel:naturalWidth()
         natural = math.max(natural, RowView.naturalWidth(row, cfg, self.cols))
     end
     if self.title then
-        local tw = RowView.textWidget(self.title, cfg.title_face, { bold = true })
+        local tw = RowView.textWidget(self.title, cfg.face, { bold = true })
         natural = math.max(natural, tw:getSize().w)
         tw:free()
     end
@@ -133,22 +133,22 @@ function Panel:layout(x, y, w, h)
     local cy = y + cfg.border
     self.title_rect = nil
     if self.header or self.title then
-        self.title_rect = { x = inner_x, y = cy, w = inner_w, h = cfg.title_h }
+        self.title_rect = { x = inner_x, y = cy, w = inner_w, h = cfg.row_h }
         if self.header then
             self.back_view = RowView.textWidget(BACK, cfg.icon_face)
             local back_w = cfg.icon_col
-            self.title_view = RowView.textWidget(self.header, cfg.title_face, {
+            self.title_view = RowView.textWidget(self.header, cfg.face, {
                 bold = true,
                 max_width = inner_w - 2 * cfg.pad - back_w,
                 truncate_left = true,
             })
         else
-            self.title_view = RowView.textWidget(self.title, cfg.title_face, {
+            self.title_view = RowView.textWidget(self.title, cfg.face, {
                 bold = true,
                 max_width = inner_w - 2 * cfg.pad,
             })
         end
-        cy = cy + cfg.title_h
+        cy = cy + cfg.row_h
     end
     self.row_rects = {}
     local page = self.pages[self.page]
@@ -177,6 +177,11 @@ function Panel:layout(x, y, w, h)
             label = RowView.textWidget(("%d / %d"):format(self.page, #self.pages), cfg.face),
         }
     end
+end
+
+function Panel:showPage(page)
+    self.page = page
+    self:layout(self.x, self.y, self.w, self.h)
 end
 
 function Panel:rect()

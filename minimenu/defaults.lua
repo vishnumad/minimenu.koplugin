@@ -3,10 +3,11 @@ The default menu: seeded on first install and used as the starting items of
 every "New menu…". Only actions this device supports are included.
 ]]
 
+local Index = require("minimenu/icons/index")
 local Util = require("minimenu/util")
 local _ = require("gettext")
 
-local glyph = Util.utf8char
+local glyph = Index.glyph
 
 local Defaults = {}
 
@@ -45,28 +46,31 @@ local SETTING = { "setting", "Settings" }
 local function items()
     return {
         folder(_("Go to ..."), {
-            entry({ NAVI, { "go_to_previous_location", "Go back to previous location" } }, { icon = glyph(0xE74C) }), -- arrow-left
-            entry({ NAVI, { "go_to_next_location", "Go forward to next location" } }, { icon = glyph(0xE753) }), -- arrow-right
+            entry(
+                { NAVI, { "go_to_previous_location", "Go back to previous location" } },
+                { icon = glyph("arrow-left") }
+            ),
+            entry({ NAVI, { "go_to_next_location", "Go forward to next location" } }, { icon = glyph("arrow-right") }),
             sep(),
-            entry({ NAVI, { "table_of_contents", "Table of contents" } }, { icon = glyph(0xEF34) }), -- table-of-contents
-            entry({ NAVI, { "bookmarks", "Bookmarks" } }, { icon = glyph(0xE7BF) }), -- bookmark
-            entry({ NAVI, { "page_browser", "Page browser" } }, { icon = glyph(0xEC6F) }), -- view-grid
+            entry({ NAVI, { "table_of_contents", "Table of contents" } }, { icon = glyph("table-of-contents") }),
+            entry({ NAVI, { "bookmarks", "Bookmarks" } }, { icon = glyph("bookmark") }),
+            entry({ NAVI, { "page_browser", "Page browser" } }, { icon = glyph("view-grid") }),
         }, "reader"),
         entry(
             { { "typeset", "Typeset" }, { "change_font", "Font" } },
-            { page = true, scope = "reader", icon = glyph(0xEDD4) } -- format-font
+            { page = true, scope = "reader", icon = glyph("format-font") }
         ),
-        act("filemanager", glyph(0xE905), _("Close book"), "reader"), -- exit-to-app
+        act("filemanager", glyph("exit-to-app"), _("Close book"), "reader"),
         sep("reader"),
-        entry({ SETTING, { "network", "Network" }, { "network_wifi", "Wi-Fi connection" } }, { icon = glyph(0xECA8) }), -- wifi
-        entry({ SETTING, { "night_mode", "Night mode" } }, { icon = glyph(0xEC93) }), -- weather-night
-        entry({ SETTING, { "frontlight", "Frontlight" } }, { icon = glyph(0xEDE6) }), -- lightbulb-on
+        entry({ SETTING, { "network", "Network" }, { "network_wifi", "Wi-Fi connection" } }, { icon = glyph("wifi") }),
+        entry({ SETTING, { "night_mode", "Night mode" } }, { icon = glyph("weather-night") }),
+        entry({ SETTING, { "frontlight", "Frontlight" } }, { icon = glyph("lightbulb-on") }),
         folder(_("Device"), {
-            act("poweroff", glyph(0xEB24)), -- power
-            act("exit", glyph(0xE905)), -- exit-to-app
-            act("restart", glyph(0xEE07)), -- restart
+            act("poweroff", glyph("power")),
+            act("exit", glyph("exit-to-app")),
+            act("restart", glyph("restart")),
         }),
-        act("suspend", glyph(0xEBB1)), -- sleep
+        act("suspend", glyph("sleep")),
     }
 end
 
@@ -74,6 +78,9 @@ end
 -- folders left empty and separators left leading, trailing or doubled.
 -- `issue` returns a new item id; `supported` tells whether an action can be used.
 function Defaults.build(issue, supported)
+    local function isSeparator(item)
+        return item.kind == "separator"
+    end
     local function build(list)
         local kept = {}
         for _i, item in ipairs(list) do
@@ -86,24 +93,11 @@ function Defaults.build(issue, supported)
             end
             if keep then table.insert(kept, item) end
         end
-        local tidy = {}
+        kept = Util.tidySeparators(kept, isSeparator)
         for _i, item in ipairs(kept) do
-            if item.kind ~= "separator" or (#tidy > 0 and tidy[#tidy].kind ~= "separator") then
-                table.insert(tidy, item)
-            end
+            item.id = issue()
         end
-        while #tidy > 0 and tidy[#tidy].kind == "separator" do
-            table.remove(tidy)
-        end
-        local out = {}
-        for i, item in ipairs(tidy) do
-            out[i] =
-                { id = issue(), kind = item.kind, label = item.label, icon = item.icon, scope = item.scope, data = {} }
-            for k, v in pairs(item.data) do
-                out[i].data[k] = v
-            end
-        end
-        return out
+        return kept
     end
     return build(items())
 end

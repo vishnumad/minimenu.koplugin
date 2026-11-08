@@ -12,8 +12,10 @@ local _ = require("gettext")
 local Screen = Device.screen
 
 local Anchor = require("minimenu/ui/anchor")
+local Folder = require("minimenu/kinds/folder")
+local Index = require("minimenu/icons/index")
+local Metrics = require("minimenu/ui/metrics")
 local Panel = require("minimenu/ui/panel")
-local Popup = require("minimenu/ui/popup")
 local Store = require("minimenu/store")
 
 local Preview = WidgetContainer:extend {
@@ -25,12 +27,12 @@ local Preview = WidgetContainer:extend {
 
 local function rows()
     return {
-        { label = _("Wi-Fi connection"), icon = "\u{ECA8}", checked = true },
-        { label = _("Night mode"), icon = "\u{EC93}", checked = false },
+        { label = _("Wi-Fi connection"), icon = Index.glyph("wifi"), checked = true },
+        { label = _("Night mode"), icon = Index.glyph("weather-night"), checked = false },
         { separator = true },
         {
             label = _("Device"),
-            icon = "\u{F07B}",
+            icon = Folder.ICON,
             children = function()
                 return {}
             end,
@@ -55,14 +57,15 @@ function Preview:init()
 end
 
 function Preview:build()
-    local cfg = Popup.metrics()
+    local cfg = Metrics.get()
     local screen = { w = Screen:getWidth(), h = Screen:getHeight() }
+    local bounds = Metrics.widthBounds(screen.w)
     self.panel = Panel.new {
         rows = rows(),
         cfg = cfg,
         title = _("Preview"),
-        min_w = math.floor(screen.w * 0.3),
-        max_w = math.floor(screen.w * 0.8),
+        min_w = bounds.min_w,
+        max_w = bounds.max_w,
     }
     local w, h = self.panel:measure(screen.h)
     local r = Anchor.fixed("bottom_left", { w = w, h = h }, screen, cfg.margin)

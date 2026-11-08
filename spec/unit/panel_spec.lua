@@ -5,10 +5,8 @@ local cfg = {
     pad = 5,
     row_h = 40,
     sep_h = 10,
-    title_h = 40,
     pager_h = 40,
     icon_col = 30,
-    trail_col = 30,
     side_col = 40,
 }
 
@@ -71,7 +69,7 @@ describe("panel", function()
         local list = { { label = "abc", icon = "x" }, { label = "abcdef", checked = true } }
         local chrome = 2 * cfg.pad + 2 * cfg.border
         local panel = Panel.new { rows = list, cfg = cfg }
-        assert.equal(60 + cfg.icon_col + cfg.trail_col + chrome, (panel:measure(1000)))
+        assert.equal(60 + 2 * cfg.icon_col + chrome, (panel:measure(1000)))
 
         panel = Panel.new { rows = list, cfg = cfg, title = "a much longer title" }
         assert.equal(190 + chrome, (panel:measure(1000)))

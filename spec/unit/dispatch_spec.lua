@@ -1,0 +1,15 @@
+local DispatchUtil = require("minimenu/dispatch")
+
+describe("dispatch supported", function()
+    after_each(function()
+        DispatchUtil.inject(nil, nil)
+    end)
+
+    it("rejects unknown actions and ones this device can't use", function()
+        DispatchUtil.inject({}, { toc = {}, toggle_wifi = { condition = false }, reboot = { condition = true } })
+        assert.is_true(DispatchUtil.supported("toc"))
+        assert.is_true(DispatchUtil.supported("reboot"))
+        assert.is_false(DispatchUtil.supported("toggle_wifi"))
+        assert.is_false(DispatchUtil.supported("nope"))
+    end)
+end)
