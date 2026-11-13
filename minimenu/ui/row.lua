@@ -82,28 +82,32 @@ function RowView.paint(bb, view, cfg, x, y, w, h, state)
         bb:paintRect(x + cfg.pad, y + math.floor((h - lh) / 2), w - 2 * cfg.pad, lh, Blitbuffer.COLOR_DARK_GRAY)
         return
     end
-    local cx = x + cfg.pad
-    local function vcenter(widget)
-        return y + math.floor((h - widget:getSize().h) / 2)
+    local label_y = y + math.floor((h - view.label:getSize().h) / 2)
+    -- Icons center on the label's text, not on the row: fonts differ in where
+    -- their text sits within their line height.
+    local mid = label_y + view.label:getBaseline() - cfg.text_mid
+    local function iconY(widget)
+        return math.floor(mid - widget:getSize().h / 2 + 0.5)
     end
+    local cx = x + cfg.pad
     if view.cols.icon then
         if view.icon then
             local iw = view.icon:getSize().w
-            view.icon:paintTo(bb, cx + math.floor((cfg.icon_size - iw) / 2), vcenter(view.icon))
+            view.icon:paintTo(bb, cx + math.floor((cfg.icon_size - iw) / 2), iconY(view.icon))
         end
         cx = cx + cfg.icon_col
     end
-    view.label:paintTo(bb, cx, vcenter(view.label))
+    view.label:paintTo(bb, cx, label_y)
     local right = x + w - (view.side and cfg.side_col or 0)
     if view.trail then
         local tw = view.trail:getSize().w
-        view.trail:paintTo(bb, right - cfg.pad - math.floor((cfg.icon_size + tw) / 2), vcenter(view.trail))
+        view.trail:paintTo(bb, right - cfg.pad - math.floor((cfg.icon_size + tw) / 2), iconY(view.trail))
     end
     if view.side then
         local divider_h = math.floor(h / 2)
         bb:paintRect(right, y + math.floor((h - divider_h) / 2), cfg.line, divider_h, COLOR_DIM)
         local sw = view.side:getSize().w
-        view.side:paintTo(bb, right + math.floor((cfg.side_col - sw) / 2), vcenter(view.side))
+        view.side:paintTo(bb, right + math.floor((cfg.side_col - sw) / 2), iconY(view.side))
     end
     if state and state.open then bb:invertRect(x, y, w, h) end
 end

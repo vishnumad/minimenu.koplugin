@@ -3,6 +3,7 @@
 local Device = require("device")
 local Font = require("ui/font")
 local FontList = require("fontlist")
+local RenderText = require("ui/rendertext")
 local Size = require("ui/size")
 local Store = require("minimenu/store")
 local Screen = Device.screen
@@ -19,6 +20,13 @@ local function textFont()
     return "cfont"
 end
 
+-- Mixed-case text looks centered lower than its capitals: halfway down to
+-- the middle of its lowercase letters. Returns that height above the baseline.
+local function textMiddle(face)
+    local cap, x = RenderText:getGlyph(face, 0x48).t, RenderText:getGlyph(face, 0x78).t -- "H", "x"
+    return (cap + x) / 4
+end
+
 function Metrics.get()
     local font_size = Store.setting("font_size")
     local icon_pt = Metrics.iconPoints()
@@ -30,6 +38,7 @@ function Metrics.get()
     )
     local pad = Screen:scaleBySize(Store.setting("padding"))
     local shadow = Store.setting("shadow") and Screen:scaleBySize(3) or 0
+    local face = Font:getFace(textFont(), font_size)
     return {
         row_h = row_h,
         sep_h = Screen:scaleBySize(9),
@@ -47,7 +56,8 @@ function Metrics.get()
         shadow = shadow,
         margin = math.max(Screen:scaleBySize(Store.setting("edge_margin")), shadow),
         offset = Screen:scaleBySize(12),
-        face = Font:getFace(textFont(), font_size),
+        face = face,
+        text_mid = textMiddle(face),
         icon_face = Font:getFace("cfont", icon_pt),
     }
 end

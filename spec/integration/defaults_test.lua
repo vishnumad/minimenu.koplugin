@@ -52,7 +52,7 @@ test("default menu fits on one page in the reader", function()
     H.closeReader()
 end)
 
--- Vertical centre of the dark pixels in columns x0..x1 of rect r.
+-- Vertical center of the dark pixels in columns x0..x1 of rect r.
 local function inkCenter(r, x0, x1)
     local bb = H.Screen.bb
     local top, bot
@@ -69,7 +69,7 @@ local function inkCenter(r, x0, x1)
     return (top + bot) / 2
 end
 
-test("folder chevrons are vertically centred, at any text size", function()
+test("folder chevrons line up with the folder icon, at any text size", function()
     H.fm()
     for _, size in ipairs({ false, 36 }) do
         Store.setSetting("font_size", size or nil)
@@ -77,12 +77,13 @@ test("folder chevrons are vertically centred, at any text size", function()
         H.drain()
         H.shot("chevron_" .. tostring(size))
         local panel = H.popup().chain[1].panel
+        local cfg = panel.cfg
         local r = panel:rowRect(H.rowIndex(1, "Device"))
-        local center = r.y + (r.h - 1) / 2
-        local chevron = inkCenter(r, r.x + r.w - panel.cfg.icon_col - panel.cfg.pad, r.x + r.w - 1)
+        local icon = inkCenter(r, r.x + cfg.pad, r.x + cfg.pad + cfg.icon_size - 1)
+        local chevron = inkCenter(r, r.x + r.w - cfg.icon_col - cfg.pad, r.x + r.w - 1)
         assert(
-            math.abs(chevron - center) <= 1,
-            ("size %s: chevron at %.1f, row centre %.1f"):format(size, chevron, center)
+            math.abs(chevron - icon) <= 1,
+            ("size %s: chevron at %.1f, folder icon at %.1f"):format(size, chevron, icon)
         )
         H.tap(H.rowCenter(1, H.rowIndex(1, "Device")))
         local sub = H.popup().chain[2].panel
@@ -91,7 +92,7 @@ test("folder chevrons are vertically centred, at any text size", function()
         local above_line = { x = t.x, y = t.y, w = t.w, h = t.h - 3 * sub.cfg.line }
         local back = inkCenter(above_line, t.x + sub.cfg.pad, t.x + sub.cfg.pad + sub.cfg.icon_size)
         H.shot("chevron_sub_" .. tostring(size))
-        assert(math.abs(back - (t.y + (t.h - 1) / 2)) <= 1, ("size %s: back arrow off centre"):format(size))
+        assert(math.abs(back - (t.y + (t.h - 1) / 2)) <= 1, ("size %s: back arrow off center"):format(size))
         H.API.close()
         H.drain()
     end
