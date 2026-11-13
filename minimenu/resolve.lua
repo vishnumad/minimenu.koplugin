@@ -32,6 +32,7 @@ function Resolve.item(item, ctx, kinds)
     if item.label and item.label ~= "" and not row.separator then row.label = item.label end
     if item.icon and item.icon ~= "" then row.icon = item.icon end
     row.label = row.label or ""
+    if item.keep_open then row.keep_open = true end
     row.item = item
     if not row.separator then row.secondary = Resolve.secondary(item, ctx, kinds) end
     return row
@@ -54,7 +55,7 @@ function Resolve.secondary(item, ctx, kinds)
         available = res.available ~= false,
         disabled = res.disabled,
         run = res.run,
-        keep_open = res.keep_open,
+        keep_open = res.keep_open or s.keep_open,
         children = res.children,
         title = res.title,
         menu_id = res.menu_id,
@@ -72,7 +73,7 @@ local function settleSecondary(row, opts)
 end
 
 --- Editor view of an item, whatever its scope.
--- Returns { label, icon, available, missing, orphan, separator }
+-- Returns { label, icon, available, missing, orphan, separator, opens_menu }
 function Resolve.inspect(item, ctx, kinds)
     local provider = kinds(item.kind)
     if not provider then
@@ -87,6 +88,7 @@ function Resolve.inspect(item, ctx, kinds)
         available = row.available ~= false,
         missing = row.missing,
         separator = row.separator,
+        opens_menu = row.children ~= nil,
     }
 end
 

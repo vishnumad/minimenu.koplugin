@@ -88,10 +88,11 @@ function ItemDialog.changeAction(menu_id, item_id, ctx)
     end)
 end
 
---- Sets the second action, keeping its icon.
+--- Sets the second action, keeping its icon and whether it keeps the menu open.
 function ItemDialog.pickSecondary(menu_id, item_id, ctx)
     pickAction(_("Second action"), menu_id, item_id, ctx, function(it, kind, data)
-        it.secondary = { kind = kind, data = data, icon = it.secondary and it.secondary.icon }
+        local old = it.secondary or {}
+        it.secondary = { kind = kind, data = data, icon = old.icon, keep_open = old.keep_open }
     end)
 end
 
@@ -99,6 +100,24 @@ function ItemDialog.removeSecondary(menu_id, item_id)
     update(menu_id, item_id, function(it)
         it.secondary = nil
     end)
+end
+
+--- With `secondary`, toggles it for the second action instead.
+function ItemDialog.toggleKeepOpen(menu_id, item_id, secondary)
+    update(menu_id, item_id, function(it)
+        local target = secondary and it.secondary or it
+        if not target then return false end
+        target.keep_open = not target.keep_open or nil
+    end)
+end
+
+local function keepOpenButton(menu_id, item_id, target, secondary)
+    return {
+        (target.keep_open and "\u{2713} " or "") .. _("Keep menu open"),
+        function()
+            ItemDialog.toggleKeepOpen(menu_id, item_id, secondary)
+        end,
+    }
 end
 
 function ItemDialog.secondaryGlyph(secondary)
@@ -414,6 +433,7 @@ function ItemDialog.show(menu_id, item_id, ctx)
                     end,
                 },
             })
+            if not info.opens_menu then table.insert(behaviour, { keepOpenButton(menu_id, item_id, item) }) end
         end
         if item.kind == "menu_link" and Store.menu(item.data.menu) then
             table.insert(behaviour, {
@@ -505,6 +525,8 @@ function ItemDialog.showSecondary(menu_id, item_id, ctx)
     local title = _("Second action")
     local res = Resolve.secondary(item, ctx, Kinds.get)
     if res and not res.available then title = title .. "\n" .. _("Not available here") end
+    local keep_open = {}
+    if res and not res.children then keep_open = { keepOpenButton(menu_id, item_id, item.secondary, true) } end
     return groupedDialog(title, {
         {
             {
@@ -523,6 +545,7 @@ function ItemDialog.showSecondary(menu_id, item_id, ctx)
                     end,
                 },
             },
+            keep_open,
             {
                 {
                     _("Remove"),

@@ -148,6 +148,25 @@ test("Action: … replaces the action, keeping the label and second action", fun
     Store.deleteMenu(m.id)
 end)
 
+test("Keep menu open runs the action in place", function()
+    ran = {}
+    local m = menuWith("Keep", { id = Store.issueItemId(), kind = "probe", data = { name = "main" } })
+    API.open(m.id)
+    H.drain()
+    holdRow(1)
+    H.tapButton("Keep menu open")
+    eq(true, Store.menu(m.id).items[1].keep_open)
+    local p = assert(H.popup())
+    H.tap(H.rowCenter(1, 1))
+    H.tap(H.rowCenter(1, 1))
+    eq({ "main", "main" }, ran)
+    eq(true, not p.closed, "popup stays open")
+    holdRow(1)
+    H.tapButton("\u{2713} Keep menu open")
+    eq(nil, Store.menu(m.id).items[1].keep_open)
+    Store.deleteMenu(m.id)
+end)
+
 test("holding the second action edits the item; Remove clears it", function()
     local m = menuWith("Second", {
         id = Store.issueItemId(),
@@ -438,6 +457,7 @@ test("long-press on a root row opens the item dialog", function()
         "Rename…",
         "Change icon…",
         "Action: History",
+        "Keep menu open",
         "Add second action…",
         "Show in: Reader and File browser",
         "Add item after…",

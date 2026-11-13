@@ -150,6 +150,17 @@ describe("resolve", function()
             assert.equal("Y", s.icon)
         end)
 
+        it("keeps the menu open only for the action that asks", function()
+            local it = with { kind = "act", data = {}, keep_open = true }
+            local row = assert(Resolve.item(it, contexts.fm, lookup))
+            assert.is_nil(row.keep_open)
+            assert.is_true(row.secondary.keep_open)
+            it.keep_open, it.secondary.keep_open = true, nil
+            row = assert(Resolve.item(it, contexts.fm, lookup))
+            assert.is_true(row.keep_open)
+            assert.is_nil(row.secondary.keep_open)
+        end)
+
         it("is ignored when its kind can't be a second action", function()
             assert.is_nil(Resolve.item(with { kind = "leaf", data = { text = "x" } }, contexts.fm, lookup).secondary)
             assert.is_nil(Resolve.item(with { kind = "not_installed", data = {} }, contexts.fm, lookup).secondary)
