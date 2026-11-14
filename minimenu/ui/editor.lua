@@ -383,7 +383,8 @@ function Editor.appearanceItem()
 end
 
 function Editor.itemRows(menu_id, folder_id, ctx, nav)
-    local ItemDialog = require("minimenu/ui/item_dialog")
+    local ItemEdits = require("minimenu/ui/item_edits")
+    local ItemSheet = require("minimenu/ui/item_sheet")
     local Kinds = require("minimenu/kinds/init")
     local Resolve = require("minimenu/resolve")
     local model = require("minimenu/model")
@@ -394,7 +395,7 @@ function Editor.itemRows(menu_id, folder_id, ctx, nav)
     for _i, item in ipairs(list) do
         local info = Resolve.inspect(item, ctx, Kinds.get)
         local provider = Kinds.get(item.kind)
-        local marker = ItemDialog.marker(item, info)
+        local marker = ItemEdits.marker(item, info)
         local text
         if info.separator then
             text = "\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}  " .. _("Separator")
@@ -404,7 +405,7 @@ function Editor.itemRows(menu_id, folder_id, ctx, nav)
         local is_folder = model.children(item) ~= nil
         local id = item.id
         local parts = {}
-        if item.secondary then table.insert(parts, ItemDialog.secondaryGlyph(item.secondary)) end
+        if item.secondary then table.insert(parts, ItemEdits.secondaryGlyph(item.secondary)) end
         if is_folder then
             if marker then table.insert(parts, marker) end
             table.insert(parts, "\u{203A}")
@@ -420,11 +421,11 @@ function Editor.itemRows(menu_id, folder_id, ctx, nav)
                 if is_folder then
                     nav.enter(id)
                 else
-                    ItemDialog.show(menu_id, id, ctx)
+                    ItemSheet.show(menu_id, id, ctx)
                 end
             end,
             hold_callback = function()
-                ItemDialog.show(menu_id, id, ctx)
+                ItemSheet.show(menu_id, id, ctx)
             end,
         })
     end

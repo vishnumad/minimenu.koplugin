@@ -32,7 +32,7 @@ describe("anchor", function()
         end
     end)
 
-    it("opens centred without a gesture, and ignores the point for fixed positions", function()
+    it("opens centered without a gesture, and ignores the point for fixed positions", function()
         local r = Anchor.placeRoot { size = size, screen = screen, margin = 10, position = "gesture" }
         assert.same({ x = 200, y = 250, w = 200, h = 300 }, r)
         r = Anchor.placeRoot {

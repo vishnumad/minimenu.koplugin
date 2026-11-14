@@ -5,9 +5,11 @@ local cfg = {
     pad = 5,
     row_h = 40,
     sep_h = 10,
+    header_h = 30,
     pager_h = 40,
     icon_col = 30,
     side_col = 40,
+    gap = 8,
 }
 
 describe("panel", function()
@@ -80,6 +82,16 @@ describe("panel", function()
         assert.equal(50, (panel:measure(1000)))
     end)
 
+    it("widens for the subtitle, within bounds", function()
+        local title_row = { label = "abc" }
+        local subtitle = "a long subtitle line"
+        local chrome = 2 * cfg.pad + 2 * cfg.border
+        local panel = Panel.new { rows = rows(1), cfg = cfg, title_row = title_row, subtitle = subtitle }
+        assert.equal(#subtitle * 10 + chrome, (panel:measure(1000)))
+        panel = Panel.new { rows = rows(1), cfg = cfg, title_row = title_row, subtitle = subtitle, max_w = 100 }
+        assert.equal(100, (panel:measure(1000)))
+    end)
+
     it("still paginates for each height", function()
         local panel = Panel.new { rows = rows(10), cfg = cfg }
         local _, tall = panel:measure(1000)
@@ -105,6 +117,44 @@ describe("panel", function()
         local panel = Panel.new { rows = { { label = "a", secondary = { icon = "g" } }, { label = "b" } }, cfg = cfg }
         panel:layout(0, 0, panel:measure(1000))
         assert.equal(panel.views[1].label.max_width + cfg.side_col, panel.views[2].label.max_width)
+    end)
+
+    it("hits each cell of a cells row", function()
+        local cells = { { label = "a" }, { label = "b" }, { label = "c" } }
+        local panel = Panel.new { rows = { { cells = cells } }, cfg = cfg }
+        local _, h = panel:measure(1000)
+        panel:layout(0, 0, 300 + 2 * cfg.border, h)
+        local r = panel:rowRect(1)
+        assert.same({ "cell", 1, 1 }, { panel:hit(r.x, r.y + 1) })
+        assert.same({ "cell", 1, 2 }, { panel:hit(r.x + 150, r.y + 1) })
+        assert.same({ "cell", 1, 3 }, { panel:hit(r.x + r.w - 1, r.y + 1) })
+    end)
+
+    it("hits the close button at the right end of a closable title line", function()
+        local panel = Panel.new { rows = rows(1), cfg = cfg, title = "Title", closable = true }
+        panel:layout(0, 0, panel:measure(1000))
+        local t = panel.title_rect
+        local right = t.x + t.w - 1
+        assert.equal("close", panel:hit(right, t.y))
+        assert.equal("close", panel:hit(right - cfg.side_col + 1, t.y + t.h - 1))
+        assert.equal("title", panel:hit(right - cfg.side_col, t.y))
+    end)
+
+    it("does not hit a header as a row", function()
+        local panel = Panel.new { rows = { { label = "Section", section = true }, { label = "a" } }, cfg = cfg }
+        panel:layout(0, 0, panel:measure(1000))
+        local r = panel:rowRect(1)
+        assert.equal(cfg.header_h, r.h)
+        assert.equal("frame", panel:hit(r.x + 1, r.y + 1))
+    end)
+
+    it("skips headers and separators when moving focus", function()
+        local list = { { label = "Section", section = true }, { label = "a" }, { separator = true }, { label = "b" } }
+        local panel = Panel.new { rows = list, cfg = cfg }
+        assert.equal(2, panel:nextActionable(0, 1))
+        assert.equal(4, panel:nextActionable(2, 1))
+        assert.equal(2, panel:nextActionable(4, 1))
+        assert.equal(4, panel:nextActionable(2, -1))
     end)
 
     it("ignores the header for width", function()

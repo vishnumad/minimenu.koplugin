@@ -69,7 +69,7 @@ local function inkCenter(r, x0, x1)
     return (top + bot) / 2
 end
 
-test("folder chevrons line up with the folder icon, at any text size", function()
+test("folder icons line up with the label's capitals and the chevron, at any text size", function()
     H.fm()
     for _, size in ipairs({ false, 36 }) do
         Store.setSetting("font_size", size or nil)
@@ -81,6 +81,12 @@ test("folder chevrons line up with the folder icon, at any text size", function(
         local r = panel:rowRect(H.rowIndex(1, "Device"))
         local icon = inkCenter(r, r.x + cfg.pad, r.x + cfg.pad + cfg.icon_size - 1)
         local chevron = inkCenter(r, r.x + r.w - cfg.icon_col - cfg.pad, r.x + r.w - 1)
+        local lx = r.x + cfg.pad + cfg.icon_col
+        local capital = inkCenter(r, lx, lx + require("minimenu/ui/row").textWidth("D", cfg.face) - 1)
+        assert(
+            math.abs(icon - capital) <= 1,
+            ("size %s: folder icon at %.1f, capital D at %.1f"):format(size, icon, capital)
+        )
         assert(
             math.abs(chevron - icon) <= 1,
             ("size %s: chevron at %.1f, folder icon at %.1f"):format(size, chevron, icon)

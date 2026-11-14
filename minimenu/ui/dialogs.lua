@@ -54,38 +54,6 @@ function Dialogs.info(text, timeout)
 end
 
 --[[--
-A ButtonDialog with one choice per row.
-choices: { { text, value, enabled? }, … }
-callback(value) on choice; on_cancel() when dismissed.
-]]
-function Dialogs.choose(args, callback)
-    local ButtonDialog = require("ui/widget/buttondialog")
-    local dialog
-    local buttons = {}
-    for _, choice in ipairs(args.choices) do
-        table.insert(buttons, {
-            {
-                text = choice.text,
-                enabled = choice.enabled ~= false,
-                align = "left",
-                callback = function()
-                    UIManager:close(dialog)
-                    callback(choice.value)
-                end,
-            },
-        })
-    end
-    dialog = ButtonDialog:new {
-        title = args.title,
-        title_align = "center",
-        buttons = buttons,
-        tap_close_callback = args.on_cancel,
-    }
-    UIManager:show(dialog)
-    return dialog
-end
-
---[[--
 A full-screen Menu. Replace its items with Dialogs.relist.
 
 args:

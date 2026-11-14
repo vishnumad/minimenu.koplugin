@@ -4,7 +4,7 @@ Turns stored items into the rows a panel shows:
       separator, title, menu_id, dim, placeholder, item, secondary }
 
 `available = false`: can't run in this context; hidden or dimmed per the
-menu's hide_unavailable. `disabled = true`: greyed out right now (e.g. "Go
+menu's hide_unavailable. `disabled = true`: grayed out right now (e.g. "Go
 back" with no history); always dimmed, so rows don't come and go.
 `secondary` is the row's second action, { label, icon, available, disabled,
 run, keep_open, children, title, menu_id, dim }, hidden or dimmed the same way.
@@ -18,9 +18,7 @@ local Resolve = {}
 
 Resolve.GEAR = "\u{F013}" -- cog
 
---- nil when the item is out of scope or its kind isn't installed.
-function Resolve.item(item, ctx, kinds)
-    if item.scope and item.scope ~= ctx.name then return nil end
+local function resolveItem(item, ctx, kinds)
     local provider = kinds(item.kind)
     if not provider then return nil end
     local ok, row = pcall(provider.resolve, item, ctx)
@@ -36,6 +34,12 @@ function Resolve.item(item, ctx, kinds)
     row.item = item
     if not row.separator then row.secondary = Resolve.secondary(item, ctx, kinds) end
     return row
+end
+
+--- nil when the item is out of scope or its kind isn't installed.
+function Resolve.item(item, ctx, kinds)
+    if item.scope and item.scope ~= ctx.name then return nil end
+    return resolveItem(item, ctx, kinds)
 end
 
 --- nil when the item has no second action or its kind can't be one.
@@ -72,6 +76,19 @@ local function settleSecondary(row, opts)
     end
 end
 
+local function settle(row, opts)
+    settleSecondary(row, opts)
+    if not row.separator and (not row.available or row.disabled) then row.dim = true end
+end
+
+--- The row as a popup with nothing hidden would show it, whatever its
+-- scope; nil when its kind isn't installed.
+function Resolve.preview(item, ctx, kinds)
+    local row = resolveItem(item, ctx, kinds)
+    if row then settle(row, {}) end
+    return row
+end
+
 --- Editor view of an item, whatever its scope.
 -- Returns { label, icon, available, missing, orphan, separator, opens_menu }
 function Resolve.inspect(item, ctx, kinds)
@@ -99,8 +116,7 @@ function Resolve.rows(items, ctx, kinds, opts)
     for _, item in ipairs(items or {}) do
         local row = Resolve.item(item, ctx, kinds)
         if row and (row.separator or row.available or not opts.hide_unavailable) then
-            settleSecondary(row, opts)
-            if not row.separator and (not row.available or row.disabled) then row.dim = true end
+            settle(row, opts)
             table.insert(rows, row)
         end
     end

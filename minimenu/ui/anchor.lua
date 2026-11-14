@@ -13,6 +13,19 @@ local function clamp(v, lo, hi)
     return max(lo, min(v, hi))
 end
 
+--- Either may be nil.
+function Anchor.union(a, b)
+    if not a then return b end
+    if not b then return a end
+    local x, y = min(a.x, b.x), min(a.y, b.y)
+    return {
+        x = x,
+        y = y,
+        w = max(a.x + a.w, b.x + b.w) - x,
+        h = max(a.y + a.h, b.y + b.h) - y,
+    }
+end
+
 --- Keep a panel inside the screen margins. Oversized panels are pinned to
 -- the top/left margin (callers cap sizes beforehand).
 function Anchor.clampRect(r, screen, margin)
@@ -24,7 +37,7 @@ function Anchor.clampRect(r, screen, margin)
     }
 end
 
---- Anything other than a corner, "top" or "bottom" is centred.
+--- Anything other than a corner, "top" or "bottom" is centered.
 function Anchor.fixed(position, size, screen, margin)
     local w, h = size.w, size.h
     local cx = floor((screen.w - w) / 2)
@@ -127,7 +140,7 @@ end
 --[[--
 args:
     size, screen, margin
-    position     menu option; "gesture" without a point opens centred
+    position     menu option; "gesture" without a point opens centered
     point        gesture position { x, y }
     rect, prefer API anchor, which overrides `position`
     offset       distance from a gesture point
@@ -144,8 +157,8 @@ end
 
 --- Flyouts cascade away from the screen edge nearest the root panel.
 function Anchor.cascadeDirection(root, screen)
-    local centre = root.x + root.w / 2
-    return centre <= screen.w / 2 and "right" or "left"
+    local center = root.x + root.w / 2
+    return center <= screen.w / 2 and "right" or "left"
 end
 
 --[[--

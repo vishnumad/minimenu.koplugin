@@ -5,13 +5,12 @@ local _ = require("gettext")
 local KindPicker = {}
 
 local function chooseKind(title, filter, callback)
-    local Dialogs = require("minimenu/ui/dialogs")
     local Kinds = require("minimenu/kinds/init")
     local choices = {}
     for _i, provider in ipairs(Kinds.list(filter)) do
         table.insert(choices, { text = provider.title or provider.name, value = provider })
     end
-    Dialogs.choose({ title = title, choices = choices }, callback)
+    require("minimenu/ui/sheet").choose { title = title, choices = choices, on_choice = callback }
 end
 
 --[[--
@@ -48,7 +47,7 @@ local function contextFor(target)
     }
 end
 
---- Runs the provider's pick. on_data(data, label, icon, opts) once, unless cancelled.
+--- Runs the provider's pick. on_data(data, label, icon, opts) once, unless canceled.
 function KindPicker.pick(provider, target, on_data)
     local finished = false
     local ok, err = pcall(provider.pick, contextFor(target), function(data, label, icon, opts)

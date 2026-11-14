@@ -182,6 +182,10 @@ function H.inputDialog()
     end
 end
 
+local function center(r)
+    return r.x + math.floor(r.w / 2), r.y + math.floor(r.h / 2)
+end
+
 function H.popup()
     return H.API.current
 end
@@ -190,7 +194,7 @@ end
 function H.rowCenter(k, i)
     local r = H.popup().chain[k].panel:rowRect(i)
     assert(r, ("no row %d on panel %d's page"):format(i, k))
-    return r.x + math.floor(r.w / 2), r.y + math.floor(r.h / 2)
+    return center(r)
 end
 
 function H.rowLabels(k)
@@ -213,6 +217,65 @@ function H.rowIndex(k, label)
     end
 end
 
+--- The topmost open sheet.
+function H.sheet()
+    local stack = H.UIManager._window_stack
+    for i = #stack, 1, -1 do
+        if stack[i].widget.name == "MiniMenuSheet" then return stack[i].widget end
+    end
+end
+
+--- Row labels of the open sheet: "label: value", "label: [x]" for a checked
+-- row, "# section", "--" and "cell | cell"; dim rows and disabled cells in ().
+function H.sheetLabels()
+    local out = {}
+    for _, row in ipairs(H.sheet().panel.rows) do
+        local label = row.label or ""
+        if row.value then label = label .. ": " .. row.value end
+        if row.checked ~= nil then label = label .. (row.checked and ": [x]" or ": [ ]") end
+        if row.section then label = "# " .. label end
+        if row.separator then label = "--" end
+        if row.cells then
+            local cells = {}
+            for _, cell in ipairs(row.cells) do
+                table.insert(cells, cell.disabled and ("(" .. cell.label .. ")") or cell.label)
+            end
+            label = table.concat(cells, " | ")
+        end
+        table.insert(out, row.dim and ("(" .. label .. ")") or label)
+    end
+    return out
+end
+
+--- Taps the first row with this label, or the row with this id.
+function H.tapSheet(label)
+    local panel = H.sheet().panel
+    for i, row in ipairs(panel.rows) do
+        if row.label == label or row.id == label then
+            return H.tap(center(assert(panel:rowRect(i), "row not on this page")))
+        end
+    end
+    error("no sheet row " .. label)
+end
+
+function H.cellRect(label)
+    local panel = H.sheet().panel
+    for i, row in ipairs(panel.rows) do
+        for j, cell in ipairs(row.cells or {}) do
+            if cell.label == label then return assert(panel:cellRect(i, j), "cell not on this page"), cell end
+        end
+    end
+    error("no cell " .. label)
+end
+
+function H.tapCell(label)
+    H.tap(center(H.cellRect(label)))
+end
+
+function H.holdCell(label)
+    H.hold(center(H.cellRect(label)))
+end
+
 -- Tiny test runner -------------------------------------------------------
 
 local results = { pass = 0, fail = 0, failures = {} }
@@ -228,15 +291,29 @@ function H.test(name, fn)
         io.stdout:write("  FAIL ", name, "\n", err, "\n")
     end
     pcall(H.API.close)
+    while H.sheet() do
+        H.sheet():close()
+    end
     H.drain()
 end
 
 function H.eq(expected, actual, msg)
+    -- Objects (widgets and the like) compare by identity, plain tables by content.
     local function ser(v)
-        if type(v) ~= "table" then return tostring(v) end
+        if type(v) ~= "table" or getmetatable(v) then return tostring(v) end
         local parts = {}
         for i, x in ipairs(v) do
             parts[i] = ser(x)
+        end
+        local n, keyed = #parts, {}
+        for k, x in pairs(v) do
+            if type(k) ~= "number" or k < 1 or k > n or k % 1 ~= 0 then
+                table.insert(keyed, tostring(k) .. " = " .. ser(x))
+            end
+        end
+        table.sort(keyed)
+        for _, kv in ipairs(keyed) do
+            table.insert(parts, kv)
         end
         return "{" .. table.concat(parts, ", ") .. "}"
     end

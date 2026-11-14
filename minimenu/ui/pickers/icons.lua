@@ -63,7 +63,7 @@ local function gridLayout()
 end
 
 --- callback(icon): a glyph or "[icon=…]", false for the kind's default, or
--- nil when cancelled.
+-- nil when canceled.
 function IconPicker.pick(callback)
     local UIManager = require("ui/uimanager")
     local ButtonDialog = require("ui/widget/buttondialog")
@@ -89,9 +89,14 @@ function IconPicker.pick(callback)
     local function chooseCategory()
         local choices = {}
         for _i, v in ipairs(all_views) do
-            table.insert(choices, { text = v.title, value = v })
+            table.insert(choices, { text = v.title, value = v, checked = v == view })
         end
-        Dialogs.choose({ title = _("Icon category"), choices = choices, on_cancel = show }, setView)
+        require("minimenu/ui/sheet").choose {
+            title = _("Icon category"),
+            choices = choices,
+            on_choice = setView,
+            on_cancel = show,
+        }
     end
 
     local function search()

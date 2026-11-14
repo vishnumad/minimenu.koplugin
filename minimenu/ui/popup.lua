@@ -37,18 +37,6 @@ local REBUILD_ON = {
     settings_changed = true,
 }
 
-local function union(a, b)
-    if not a then return b end
-    if not b then return a end
-    local x, y = math.min(a.x, b.x), math.min(a.y, b.y)
-    return {
-        x = x,
-        y = y,
-        w = math.max(a.x + a.w, b.x + b.w) - x,
-        h = math.max(a.y + a.h, b.y + b.h) - y,
-    }
-end
-
 local function toGeom(r)
     return r and Geom:new { x = r.x, y = r.y, w = r.w, h = r.h }
 end
@@ -216,7 +204,7 @@ end
 function Popup:chainRect(from)
     local r
     for k = from or 1, #self.chain do
-        r = union(r, self.chain[k].panel:dirtyRect())
+        r = Anchor.union(r, self.chain[k].panel:dirtyRect())
     end
     return r
 end
@@ -249,7 +237,7 @@ function Popup:closeFrom(from)
     if from < 2 or from > #self.chain then return end
     local r = self:chainRect(from)
     local parent = self.chain[from - 1]
-    r = union(r, parent.panel:rowRect(parent.open_index))
+    r = Anchor.union(r, parent.panel:rowRect(parent.open_index))
     for k = #self.chain, from, -1 do
         self.chain[k].panel:free()
         self.chain[k] = nil
@@ -266,7 +254,7 @@ end
 
 local function actionablePart(row, part)
     if part == "secondary" then return row.secondary ~= nil and not row.secondary.dim end
-    return Resolve.actionable(row)
+    return Panel.actionable(row)
 end
 
 function Popup:openFlyout(k, index, part)
@@ -277,7 +265,7 @@ function Popup:openFlyout(k, index, part)
     self.chain[k + 1] = { row = partOf(row, part), item_id = row.item and row.item.id, part = part }
     self:buildLevel(k + 1)
     self:placeLevel(k + 1)
-    self:dirty(union(self.chain[k + 1].panel:dirtyRect(), entry.panel:rowRect(index)))
+    self:dirty(Anchor.union(self.chain[k + 1].panel:dirtyRect(), entry.panel:rowRect(index)))
     return self.chain[k + 1]
 end
 
@@ -349,7 +337,7 @@ function Popup:refreshLevel(k)
     panel:layout(x, y, w, h)
     local after = panel:dirtyRect()
     local same = before.w == after.w and before.h == after.h and before.x == after.x and before.y == after.y
-    self:dirty(union(before, after), not same)
+    self:dirty(Anchor.union(before, after), not same)
 end
 
 --- Rebuild the whole chain after an edit, keeping the open path where possible.
@@ -396,7 +384,7 @@ function Popup:rebuild()
     local last = self.chain[#self.chain]
     last.open_index, last.open_part = nil, nil
     if self.focus_visible then self:ensureFocus() end
-    self:dirty(union(before, self:chainRect(1)), true)
+    self:dirty(Anchor.union(before, self:chainRect(1)), true)
 end
 
 function Popup:onStoreEvent(ev)
@@ -510,12 +498,11 @@ function Popup:onHold(_, ges)
     local k, what, index = self:hitTest(ges.pos.x, ges.pos.y)
     if not k or (what ~= "row" and what ~= "secondary") then return true end
     local row = self.chain[k].panel.rows[index]
-    local ItemDialog = require("minimenu/ui/item_dialog")
     if row.placeholder then
         local folder_id, menu_id = self:folderIdAt(k)
         require("minimenu/ui/pickers/kinds").add({ menu_id = menu_id, folder_id = folder_id, ctx = self.ctx })
     elseif row.item then
-        ItemDialog.show(self.menu_id, row.item.id, self.ctx)
+        require("minimenu/ui/item_sheet").show(self.menu_id, row.item.id, self.ctx)
     end
     return true
 end
@@ -542,27 +529,12 @@ function Popup:deepest()
     return #self.chain, self.chain[#self.chain]
 end
 
---- Next actionable row after `from` in direction `step`, across pages, wrapping.
-local function nextActionable(rows, from, step)
-    local n = #rows
-    local i = from
-    for _ = 1, n do
-        i = i + step
-        if i > n then
-            i = 1
-        elseif i < 1 then
-            i = n
-        end
-        if Resolve.actionable(rows[i]) then return i end
-    end
-end
-
 function Popup:ensureFocus()
     local _, entry = self:deepest()
     local rows = entry.panel.rows
-    if not entry.focus or not Resolve.actionable(rows[entry.focus]) then
+    if not entry.focus or not Panel.actionable(rows[entry.focus]) then
         local page = entry.panel.pages[entry.panel.page]
-        entry.focus = nextActionable(rows, (page and page.first or 1) - 1, 1)
+        entry.focus = entry.panel:nextActionable((page and page.first or 1) - 1, 1)
         entry.focus_part = nil
     end
     return entry.focus
@@ -578,14 +550,14 @@ function Popup:moveFocus(step)
     if not had or not entry.focus then
         self:ensureFocus()
     else
-        local nxt = nextActionable(panel.rows, entry.focus, step)
+        local nxt = panel:nextActionable(entry.focus, step)
         if nxt then entry.focus = nxt end
     end
     if entry.focus then
         local page = panel:pageOf(entry.focus)
         if page and page ~= panel.page then panel:showPage(page) end
     end
-    self:dirty(union(before, panel:dirtyRect()))
+    self:dirty(Anchor.union(before, panel:dirtyRect()))
     return true
 end
 
@@ -601,7 +573,7 @@ function Popup:pressFocused(open_only)
     local k, entry = self:deepest()
     if not self.focus_visible or not entry.focus then return self:moveFocus(1) end
     local row = entry.panel.rows[entry.focus]
-    if not Resolve.actionable(row) then return true end
+    if not Panel.actionable(row) then return true end
     local part = entry.focus_part == "secondary" and row.secondary and "secondary" or "row"
     if partOf(row, part).children then
         if entry.open_index ~= entry.focus or entry.open_part ~= part then

@@ -30,7 +30,7 @@ describe("util", function()
         assert.is_nil(icon)
     end)
 
-    it("recognises glyphs and icon names", function()
+    it("recognizes glyphs and icon names", function()
         assert.is_true(Util.isGlyph(u(0xF07B)))
         assert.is_true(Util.isGlyph(u(0xF8FF)))
         assert.is_false(Util.isGlyph(u(0xF900)))

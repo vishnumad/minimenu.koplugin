@@ -89,22 +89,22 @@ describe("resolve", function()
 
     it("always shows disabled rows dimmed, even when hiding unavailable ones", function()
         local k = function(n)
-            if n == "greyed" then
+            if n == "grayed" then
                 return {
                     resolve = function()
-                        return { label = "Greyed", available = true, disabled = true }
+                        return { label = "Grayed", available = true, disabled = true }
                     end,
                 }
             end
             return lookup(n)
         end
         local rows = Resolve.rows(
-            { { id = "g", kind = "greyed", data = {} }, leaf("a", "Both") },
+            { { id = "g", kind = "grayed", data = {} }, leaf("a", "Both") },
             contexts.fm,
             k,
             { hide_unavailable = true }
         )
-        assert.same({ "Greyed", "Both" }, labels(rows))
+        assert.same({ "Grayed", "Both" }, labels(rows))
         assert.is_true(rows[1].dim)
     end)
 
@@ -132,6 +132,13 @@ describe("resolve", function()
         assert.equal("X", rows[1].icon)
         assert.equal("Broken", rows[2].label)
         assert.is_true(rows[2].dim)
+    end)
+
+    it("previews an item whatever its scope, dimmed where it can't run", function()
+        local row = assert(Resolve.preview(leaf("b", "Reader action", "reader", "reader"), contexts.fm, lookup))
+        assert.equal("Reader action", row.label)
+        assert.is_true(row.dim)
+        assert.is_nil(Resolve.preview({ id = "g", kind = "not_installed", data = {} }, contexts.fm, lookup))
     end)
 
     describe("second action", function()
