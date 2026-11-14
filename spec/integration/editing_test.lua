@@ -1,6 +1,8 @@
 local H = require("harness").setup()
 local Store, API, test, eq = H.Store, H.API, H.test, H.eq
-local ItemDialog = require("minimenu/ui/item_dialog")
+local ItemEdits = require("minimenu/ui/item_edits")
+local ItemSheet = require("minimenu/ui/item_sheet")
+local RowView = require("minimenu/ui/row")
 local DispatchUtil = require("minimenu/dispatch")
 local Actions = require("minimenu/actions")
 local model = require("minimenu/model")
@@ -26,7 +28,14 @@ end
 
 local function holdRow(i)
     H.hold(H.rowCenter(1, i))
-    assert(ItemDialog.current and H.top() == ItemDialog.current, "item dialog on top")
+    assert(H.sheet() and H.top() == H.sheet(), "item sheet on top")
+end
+
+local function sheetHas(label)
+    for _, l in ipairs(H.sheetLabels()) do
+        if l == label then return true end
+    end
+    return false
 end
 
 local function save(text)
@@ -38,48 +47,51 @@ end
 
 local fm = H.fm()
 
-test("Add item after… inserts the chosen kind right after the row", function()
+test("Add… inserts the chosen kind right after the row", function()
     local m = menuWith("Add", act("history"), act("favorites"))
     API.open(m.id)
     H.drain()
     holdRow(1)
-    H.tapButton("Add item after…")
-    eq("Add item", H.top().title)
-    H.tapButton("Separator")
+    local sheet = assert(H.sheet())
+    H.tapCell("Add…")
+    assert(sheet.closed, "Add… leaves the item sheet")
+    eq("Add item", H.sheet().panel.title)
+    H.tapSheet("Separator")
+    eq(nil, H.sheet())
     eq({ "History", "--", "Favorites" }, H.rowLabels(1))
     eq("separator", Store.menu(m.id).items[2].kind)
     Store.deleteMenu(m.id)
 end)
 
-test("Rename… sets a label; clearing it brings the default name back", function()
+test("Name sets a label; clearing it brings the default name back", function()
     local m = menuWith("Rename", act("history"))
     API.open(m.id)
     H.drain()
     holdRow(1)
-    H.tapButton("Rename…")
+    H.tapSheet("Name")
     eq("History", H.inputDialog().input_hint, "default name as hint")
     save("  Recent  ")
     eq({ "Recent" }, H.rowLabels(1))
-    holdRow(1)
-    H.tapButton("Rename…")
+    assert(sheetHas("Name: Recent"), "the sheet stays open and shows the new name")
+    H.tapSheet("Name")
     save("")
     eq({ "History" }, H.rowLabels(1))
     eq(nil, Store.menu(m.id).items[1].label)
     Store.deleteMenu(m.id)
 end)
 
-test("Change icon… shows the picked glyph; Default removes it", function()
+test("Icon shows the picked glyph; Default removes it", function()
     local m = menuWith("Icon", act("history"))
     API.open(m.id)
     H.drain()
     holdRow(1)
-    H.tapButton("Change icon…")
+    H.tapSheet("Icon")
     local glyph = H.top().buttontable.buttons_layout[1][1]
     local d = glyph.dimen
     H.tap(d.x + 5, d.y + 5)
     eq(glyph.text, H.popup().chain[1].panel.rows[1].icon)
-    holdRow(1)
-    H.tapButton("Change icon…")
+    assert(sheetHas("Icon: " .. glyph.text), "the sheet shows the new icon")
+    H.tapSheet("Icon")
     H.tapButton("Default")
     eq(nil, Store.menu(m.id).items[1].icon)
     Store.deleteMenu(m.id)
@@ -114,11 +126,15 @@ test("a second action runs from its icon; the rest of the row runs the first", f
     API.open(m.id)
     H.drain()
     holdRow(1)
-    H.tapButton("Add second action…")
-    eq("Second action", H.top().title)
-    assert(H.button(H.top(), "Link to another menu"), "links can be second actions")
-    H.tapButton("Probe")
+    local sheet = H.sheet()
+    H.tapSheet("Add second action…")
+    eq("Second action", H.sheet().panel.title)
+    assert(sheetHas("Link to another menu"), "links can be second actions")
+    H.tapSheet("Probe")
+    eq(sheet, H.sheet(), "back on the item sheet")
+    eq(sheet, H.top())
     eq(require("minimenu/resolve").GEAR, H.popup().chain[1].panel.rows[1].secondary.icon)
+    H.key("Back")
     H.shot("second_action")
     H.tap(sideCenter(1))
     eq({ "side" }, ran)
@@ -129,7 +145,36 @@ test("a second action runs from its icon; the rest of the row runs the first", f
     Store.deleteMenu(m.id)
 end)
 
-test("Action: … replaces the action, keeping the label and second action", function()
+test("the main and second action sections list the same rows", function()
+    local item = {
+        id = Store.issueItemId(),
+        kind = "probe",
+        data = { name = "main" },
+        secondary = { kind = "probe", data = { name = "side" } },
+    }
+    local m = menuWith("Parallel", item)
+    ItemSheet.show(m.id, item.id)
+    H.drain()
+    local actions = {}
+    for _, label in ipairs(H.sheetLabels()) do
+        if label == "--" then break end
+        if label == "# Main action" or #actions > 0 then table.insert(actions, label) end
+    end
+    eq({
+        "# Main action",
+        "Runs: main",
+        "Keep menu open: [ ]",
+        "# Second action",
+        "Runs: side",
+        "Icon: " .. require("minimenu/resolve").GEAR,
+        "Keep menu open: [ ]",
+        "Remove",
+    }, actions)
+    H.shot("second_action_sheet")
+    Store.deleteMenu(m.id)
+end)
+
+test("Runs replaces the main action, keeping the label and second action", function()
     local item = act("history")
     item.label = "Mine"
     item.secondary = { kind = "probe", data = { name = "side" } }
@@ -137,14 +182,35 @@ test("Action: … replaces the action, keeping the label and second action", fun
     API.open(m.id)
     H.drain()
     holdRow(1)
-    H.tapButton("Action: History")
-    eq("Change action", H.top().title)
-    H.tapButton("Probe")
+    H.tapSheet("main_runs")
+    eq("Main action", H.sheet().panel.title)
+    H.tapSheet("Probe")
     local changed = Store.menu(m.id).items[1]
     eq("probe", changed.kind)
     eq("side", changed.data.name)
     eq("Mine", changed.label)
     eq("side", changed.secondary.data.name)
+    Store.deleteMenu(m.id)
+end)
+
+test("Keep menu open runs the action in place", function()
+    ran = {}
+    local m = menuWith("Keep", { id = Store.issueItemId(), kind = "probe", data = { name = "main" } })
+    API.open(m.id)
+    H.drain()
+    holdRow(1)
+    H.tapSheet("main_keep_open")
+    eq(true, Store.menu(m.id).items[1].keep_open)
+    assert(sheetHas("Keep menu open: [x]"), "the sheet stays open and shows the new value")
+    H.key("Back")
+    local p = assert(H.popup())
+    H.tap(H.rowCenter(1, 1))
+    H.tap(H.rowCenter(1, 1))
+    eq({ "main", "main" }, ran)
+    eq(true, not p.closed, "popup stays open")
+    holdRow(1)
+    H.tapSheet("main_keep_open")
+    eq(nil, Store.menu(m.id).items[1].keep_open)
     Store.deleteMenu(m.id)
 end)
 
@@ -158,11 +224,11 @@ test("holding the second action edits the item; Remove clears it", function()
     API.open(m.id)
     H.drain()
     H.hold(sideCenter(1))
-    assert(ItemDialog.current and H.top() == ItemDialog.current, "item dialog on top")
-    H.tapButton(require("minimenu/resolve").GEAR .. "  Second action: side")
-    H.tapButton("Remove")
+    assert(H.sheet() and H.top() == H.sheet(), "item sheet on top")
+    H.tapSheet("Remove")
     eq(nil, Store.menu(m.id).items[1].secondary)
     eq(nil, H.popup().chain[1].panel.rows[1].secondary)
+    assert(sheetHas("Add second action…"), "the sheet offers to add one again")
     Store.deleteMenu(m.id)
 end)
 
@@ -406,107 +472,152 @@ Store.editItems(m.id, function(items)
     return true
 end)
 
-local function buttonTexts(dialog)
-    local texts = {}
-    for _, row in ipairs(dialog.buttons) do
-        for _, b in ipairs(row) do
-            table.insert(texts, b.text)
-        end
-    end
-    return texts
-end
-
-local function press(dialog, id, hold)
-    local b = assert(dialog:getButtonById(id), "button " .. id)
-    local d = b.dimen
-    if hold then
-        H.hold(d.x + d.w / 2, d.y + d.h / 2)
-    else
-        H.tap(d.x + d.w / 2, d.y + d.h / 2)
-    end
-    H.drain()
-end
-
-test("long-press on a root row opens the item dialog", function()
+test("long-press on a root row opens the item sheet", function()
     API.open(m.id)
     H.drain()
     H.hold(H.rowCenter(1, 1))
-    assert(ItemDialog.current and top() == ItemDialog.current, "item dialog on top")
+    assert(H.sheet() and top() == H.sheet(), "item sheet on top")
     assert(not H.popup().closed, "popup stays open underneath")
-    eq("History", ItemDialog.current.title, "just the name when nothing is wrong")
+    eq("History", H.sheet().panel.title_row.label)
+    eq(nil, H.sheet().panel.subtitle, "no problem line when nothing is wrong")
     eq({
-        "Rename…",
-        "Change icon…",
-        "Action: History",
-        "Add second action…",
+        "Name: History",
+        "Icon: None",
         "Show in: Reader and File browser",
-        "Add item after…",
-        "Move…",
-        "Duplicate",
-        "Delete",
-    }, buttonTexts(ItemDialog.current))
-    H.shot("editing_item_dialog")
-    H.UIManager:close(ItemDialog.current)
-    H.drain()
-    eq(nil, ItemDialog.current)
+        "# Main action",
+        "Runs: History",
+        "Keep menu open: [ ]",
+        "# Second action",
+        "Add second action…",
+        "--",
+        "Add… | Move… | Duplicate | Delete",
+    }, H.sheetLabels())
+    H.shot("editing_item_sheet")
+    H.key("Back")
+    eq(nil, H.sheet())
 end)
 
-test("Move… stays open while moving up and down", function()
+test("a folder adds inside or after itself", function()
     API.open(m.id)
     H.drain()
-    local first = Store.menu(m.id).items[1]
-    local label = H.rowLabels(1)[1]
-    local mover = assert(ItemDialog.showMove(m.id, first.id))
-    H.drain()
-    eq(mover, top())
-    assert(not mover:getButtonById("up").enabled, "Up disabled at the top")
-    assert(not mover:getButtonById("out").enabled, "Out of folder disabled at top level")
-    press(mover, "down")
-    eq(mover, top(), "still open after Down")
-    eq(first.id, Store.menu(m.id).items[2].id)
-    assert(mover:getButtonById("up").enabled, "Up enabled once moved")
-    assert(mover.title:find("2 of 4"), mover.title)
-    eq(label, H.rowLabels(1)[2], "the popup underneath follows")
-    H.shot("editing_move_dialog")
-    press(mover, "down", true)
-    local items = Store.menu(m.id).items
-    eq(first.id, items[#items].id)
-    assert(not mover:getButtonById("down").enabled, "Down disabled at the bottom")
-    press(mover, "up", true)
-    eq(first.id, Store.menu(m.id).items[1].id)
-    assert(not H.popup().closed, "popup stays open underneath")
-    press(mover, "done")
-    assert(top() ~= mover, "Done closes")
-    eq(nil, ItemDialog.mover)
+    holdRow(H.rowIndex(1, "Tools"))
+    H.tapCell("Add…")
+    eq("Add item", H.sheet().panel.title)
+    H.tapSheet("Inside this folder")
+    H.tapSheet("Separator")
+    local kids = model.find(Store.menu(m.id).items, tools.id).data.items
+    eq("separator", kids[#kids].kind)
+    table.remove(kids)
+    Store.itemChanged(m.id)
 end)
 
-test("Move… closes when its item is deleted", function()
+test("a separator or an orphan sheet has only Show in", function()
+    local sep = { id = Store.issueItemId(), kind = "separator", data = {} }
+    local orphan = { id = Store.issueItemId(), kind = "gone_plugin", label = "Gone", data = {} }
+    local o = menuWith("Plain", sep, orphan)
+    ItemSheet.show(o.id, sep.id)
+    H.drain()
+    eq("Edit item", H.sheet().panel.title)
+    eq(nil, H.sheet().panel.title_row, "no preview of a separator")
+    eq({ "Show in: Reader and File browser", "--", "Add… | Move… | Duplicate | Delete" }, H.sheetLabels())
+    H.sheet():close()
+    ItemSheet.show(o.id, orphan.id)
+    H.drain()
+    eq("Gone", H.sheet().panel.title_row.label)
+    eq("Needs plugin: gone_plugin · kept until you delete it", H.sheet().panel.subtitle)
+    eq({ "Show in: Reader and File browser", "--", "Add… | Move… | Duplicate | Delete" }, H.sheetLabels())
+    H.shot("editing_orphan_sheet")
+    Store.deleteMenu(o.id)
+end)
+
+test("the item sheet closes when its item is deleted elsewhere", function()
     local extra = act("history")
     Store.editItems(m.id, function(items)
         table.insert(items, extra)
         return true
     end)
-    local mover = assert(ItemDialog.showMove(m.id, extra.id))
+    assert(ItemSheet.show(m.id, extra.id))
     H.drain()
-    eq(mover, top())
-    ItemDialog.delete(m.id, extra.id)
+    Store.editItems(m.id, function(items)
+        return model.remove(items, extra.id) ~= nil
+    end)
     H.drain()
-    assert(top() ~= mover, "closed")
+    eq(nil, H.sheet())
+end)
+
+local UP, DOWN = "\u{25B2}  Up", "\u{25BC}  Down"
+
+test("Move… turns the sheet into move controls; Done turns it back", function()
+    API.open(m.id)
+    H.drain()
+    local first = Store.menu(m.id).items[1]
+    local label = H.rowLabels(1)[1]
+    holdRow(1)
+    local sheet = assert(H.sheet())
+    H.tapCell("Move…")
+    eq(sheet, top(), "the same sheet, still on top")
+    eq("Move item", sheet.panel.title)
+    eq(label, sheet.panel.title_row.label)
+    eq("1 of 4", sheet.panel.subtitle)
+    eq({ "(" .. UP .. ") | " .. DOWN, "To folder… | (Out of folder)", "--", "Done" }, H.sheetLabels())
+    local rects = { H.cellRect(UP), H.cellRect(DOWN) }
+    H.tapCell(DOWN)
+    eq(sheet, top(), "still open after Down")
+    eq(first.id, Store.menu(m.id).items[2].id)
+    eq("2 of 4", sheet.panel.subtitle)
+    eq(UP .. " | " .. DOWN, H.sheetLabels()[1], "Up enabled once moved")
+    eq(label, H.rowLabels(1)[2], "the popup underneath follows")
+    H.shot("editing_move_sheet")
+    H.tapCell(UP)
+    H.tapCell(DOWN)
+    for k, cell in ipairs({ UP, DOWN }) do
+        local r = H.cellRect(cell)
+        eq({ rects[k].x, rects[k].y, rects[k].w, rects[k].h }, { r.x, r.y, r.w, r.h }, cell .. " stays put")
+    end
+    H.holdCell(DOWN)
+    local items = Store.menu(m.id).items
+    eq(first.id, items[#items].id)
+    eq(UP .. " | (" .. DOWN .. ")", H.sheetLabels()[1], "Down disabled at the bottom")
+    H.holdCell(UP)
+    eq(first.id, Store.menu(m.id).items[1].id)
+    assert(not H.popup().closed, "popup stays open underneath")
+    H.tapCell("Done")
+    eq(sheet, top(), "Done keeps the sheet")
+    eq("Edit item", sheet.panel.title)
+    H.key("Back")
+    eq(nil, H.sheet())
+end)
+
+test("move mode closes when its item is deleted", function()
+    local extra = act("history")
+    Store.editItems(m.id, function(items)
+        table.insert(items, extra)
+        return true
+    end)
+    local sheet = assert(ItemSheet.show(m.id, extra.id))
+    H.drain()
+    H.tapCell("Move…")
+    eq("Move item", sheet.panel.title)
+    ItemEdits.delete(m.id, extra.id)
+    H.drain()
+    eq(nil, H.sheet())
 end)
 
 test("Show in offers the three scopes and sets one", function()
     local first = Store.menu(m.id).items[1]
-    ItemDialog.chooseScope(m.id, first.id)
+    ItemEdits.chooseScope(m.id, first.id)
     H.drain()
-    local dlg = top()
-    eq("Show in", dlg.title)
-    dlg.buttons[2][1].callback()
-    H.drain()
+    eq(top(), H.sheet())
+    eq("Show in", H.sheet().panel.title)
+    eq({ "Reader and File browser: " .. RowView.CHECK, "Reader", "File browser" }, H.sheetLabels())
+    H.shot("editing_scope_sheet")
+    H.tapSheet("Reader")
+    eq(nil, H.sheet(), "a choice closes the sheet")
     eq("reader", Store.menu(m.id).items[1].scope)
-    ItemDialog.chooseScope(m.id, first.id)
+    ItemEdits.chooseScope(m.id, first.id)
     H.drain()
-    top().buttons[1][1].callback()
-    H.drain()
+    eq({ "Reader and File browser", "Reader: " .. RowView.CHECK, "File browser" }, H.sheetLabels())
+    H.tapSheet("Reader and File browser")
     eq(nil, Store.menu(m.id).items[1].scope)
 end)
 
@@ -519,9 +630,8 @@ test("editing from a flyout keeps the chain open and re-renders", function()
     eq(3, #p.chain)
     -- long-press "Screenshot" in the deepest flyout, then delete it
     H.hold(H.rowCenter(3, 1))
-    H.UIManager:close(ItemDialog.current)
-    ItemDialog.delete(m.id, inner.data.items[1].id)
-    H.drain()
+    H.tapCell("Delete")
+    eq(nil, H.sheet(), "the sheet closes with its item")
     eq(3, #p.chain, "chain still open")
     eq({ "Full screen refresh" }, H.rowLabels(3))
     -- rename a row in level 2
@@ -556,10 +666,9 @@ test("long-press on the placeholder offers Add item", function()
     API.open(empty.id)
     H.drain()
     H.hold(H.rowCenter(1, 1))
-    local dlg = top()
-    assert(dlg.title == "Add item", "kind picker shown, got " .. tostring(dlg.title))
-    H.UIManager:close(dlg)
-    H.drain()
+    eq(top(), H.sheet())
+    eq("Add item", H.sheet().panel.title, "kind chooser shown")
+    H.key("Back")
     Store.deleteMenu(empty.id)
 end)
 
@@ -576,13 +685,8 @@ test("Move to… offers other folders, not the item's own subtree, and moves the
     end)
     MoveTo.pick(mv.id, outer.id)
     H.drain()
-    local texts = {}
-    for _, row in ipairs(top().buttons) do
-        table.insert(texts, row[1].text)
-    end
-    eq({ "\u{F0C9}  Top level", "\u{F07B}  Other" }, texts)
-    eq(false, top().buttons[1][1].enabled, "already at top level")
-    H.tapButton("\u{F07B}  Other")
+    eq({ "(Top level: " .. RowView.CHECK .. ")", "Other" }, H.sheetLabels(), "already at top level")
+    H.tapSheet("Other")
     local items = Store.menu(mv.id).items
     eq(1, #items)
     eq(outer.id, items[1].data.items[1].id)
@@ -596,14 +700,14 @@ end)
 
 test("duplicate gives fresh ids, deep", function()
     local before = #Store.menu(m.id).items
-    ItemDialog.duplicate(m.id, tools.id)
+    ItemEdits.duplicate(m.id, tools.id)
     local items = Store.menu(m.id).items
     eq(before + 1, #items)
     local _, list, idx = model.find(items, tools.id)
     local copy = list[idx + 1]
     assert(copy.id ~= tools.id)
     assert(copy.data.items[1].id ~= tools.data.items[1].id)
-    ItemDialog.delete(m.id, copy.id) -- folder with children asks first
+    ItemEdits.delete(m.id, copy.id) -- folder with children asks first
     H.drain()
     local box = top()
     assert(box.ok_callback, "confirm box for non-empty folder")
@@ -619,7 +723,7 @@ test("deleting a folder counts the items in its subfolders too", function()
         table.insert(items, outer)
         return true
     end)
-    ItemDialog.delete(m.id, outer.id)
+    ItemEdits.delete(m.id, outer.id)
     H.drain()
     local box = top()
     eq("Delete this folder and the 4 items in it?", box.text)
@@ -779,14 +883,17 @@ test("editor lists items with markers and drills into folders", function()
     eq("Edit me \u{203A} Tools", list.title_bar.title_widget.text)
     H.shot("editing_editor")
     local night = Store.menu(m.id).items[3].data.items[1]
-    local mover = assert(ItemDialog.showMove(m.id, night.id))
+    local sheet = assert(ItemSheet.show(m.id, night.id))
     H.drain()
-    press(mover, "down")
-    eq(mover, top())
-    assert(mover.title:find("2 of %d+ in Tools"), mover.title)
+    H.tapCell("Move…")
+    H.tapCell(DOWN)
+    eq(sheet, top())
+    assert(sheet.panel.subtitle:find("^2 of %d+ in Tools$"), sheet.panel.subtitle)
     assert(list.item_table[2].text:find("Night"), list.item_table[2].text)
     H.shot("editing_editor_move")
-    press(mover, "done")
+    H.tapCell("Done")
+    eq("Edit item", sheet.panel.title, "Done goes to the item sheet")
+    H.key("Back")
     list.onReturn()
     H.drain()
     eq("Edit me", list.title_bar.title_widget.text)

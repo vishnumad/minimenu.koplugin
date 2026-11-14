@@ -21,13 +21,7 @@ function MenuPicker.pick(opts, callback)
         Dialogs.info(_("There are no other menus yet."))
         return callback(nil)
     end
-    Dialogs.choose({
-        title = opts.title or _("Choose a menu"),
-        choices = choices,
-        on_cancel = function()
-            callback(nil)
-        end,
-    }, function(menu_id)
+    local function choose(menu_id)
         if opts.warn_cycle_from and model.linkCreatesCycle(Store.get(), opts.warn_cycle_from, menu_id, "menu_link") then
             local T = require("ffi/util").template
             local ConfirmBox = require("ui/widget/confirmbox")
@@ -49,7 +43,15 @@ function MenuPicker.pick(opts, callback)
             return
         end
         callback(menu_id)
-    end)
+    end
+    require("minimenu/ui/sheet").choose {
+        title = opts.title or _("Choose a menu"),
+        choices = choices,
+        on_choice = choose,
+        on_cancel = function()
+            callback(nil)
+        end,
+    }
 end
 
 return MenuPicker

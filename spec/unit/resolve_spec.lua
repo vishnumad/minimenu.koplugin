@@ -89,22 +89,22 @@ describe("resolve", function()
 
     it("always shows disabled rows dimmed, even when hiding unavailable ones", function()
         local k = function(n)
-            if n == "greyed" then
+            if n == "grayed" then
                 return {
                     resolve = function()
-                        return { label = "Greyed", available = true, disabled = true }
+                        return { label = "Grayed", available = true, disabled = true }
                     end,
                 }
             end
             return lookup(n)
         end
         local rows = Resolve.rows(
-            { { id = "g", kind = "greyed", data = {} }, leaf("a", "Both") },
+            { { id = "g", kind = "grayed", data = {} }, leaf("a", "Both") },
             contexts.fm,
             k,
             { hide_unavailable = true }
         )
-        assert.same({ "Greyed", "Both" }, labels(rows))
+        assert.same({ "Grayed", "Both" }, labels(rows))
         assert.is_true(rows[1].dim)
     end)
 
@@ -134,6 +134,13 @@ describe("resolve", function()
         assert.is_true(rows[2].dim)
     end)
 
+    it("previews an item whatever its scope, dimmed where it can't run", function()
+        local row = assert(Resolve.preview(leaf("b", "Reader action", "reader", "reader"), contexts.fm, lookup))
+        assert.equal("Reader action", row.label)
+        assert.is_true(row.dim)
+        assert.is_nil(Resolve.preview({ id = "g", kind = "not_installed", data = {} }, contexts.fm, lookup))
+    end)
+
     describe("second action", function()
         local function with(secondary)
             local it = leaf("a", "Both")
@@ -148,6 +155,17 @@ describe("resolve", function()
             assert.equal("function", type(s.run))
             s = Resolve.item(with { kind = "act", data = {}, icon = "Y" }, contexts.fm, lookup).secondary
             assert.equal("Y", s.icon)
+        end)
+
+        it("keeps the menu open only for the action that asks", function()
+            local it = with { kind = "act", data = {}, keep_open = true }
+            local row = assert(Resolve.item(it, contexts.fm, lookup))
+            assert.is_nil(row.keep_open)
+            assert.is_true(row.secondary.keep_open)
+            it.keep_open, it.secondary.keep_open = true, nil
+            row = assert(Resolve.item(it, contexts.fm, lookup))
+            assert.is_true(row.keep_open)
+            assert.is_nil(row.secondary.keep_open)
         end)
 
         it("is ignored when its kind can't be a second action", function()

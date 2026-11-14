@@ -1,4 +1,4 @@
--- Repaint behaviour, checked without the forced full repaint that H.shot
+-- Repaint behavior, checked without the forced full repaint that H.shot
 -- does: refresh modes and regions, no ghost pixels, and night mode toggled
 -- from inside the popup.
 local H = require("harness").setup()

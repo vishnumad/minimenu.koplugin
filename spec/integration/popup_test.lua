@@ -158,6 +158,27 @@ for _, start in ipairs({ { 30, 60, "left" }, { 570, 60, "right" } }) do
     end)
 end
 
+test("a keep-open action's events reach the view under the popup", function()
+    local m = Store.createMenu("Light")
+    Store.editItems(m.id, function(items)
+        local it = act("show_frontlight_dialog")
+        it.keep_open = true
+        table.insert(items, it)
+        return true
+    end)
+    API.open(m.id)
+    H.drain()
+    local p = assert(H.popup())
+    H.tap(H.rowCenter(1, 1))
+    H.drain()
+    eq(true, not p.closed, "popup stays open")
+    eq("FrontLightWidget", H.top().name)
+    H.UIManager:close(H.top())
+    API.close()
+    H.drain()
+    Store.deleteMenu(m.id)
+end)
+
 test("stacked cards: ancestor strips stay tappable", function()
     API.open(deep.id, { gesture = H.gesture("tap", 300, 400) })
     H.drain()

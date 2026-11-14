@@ -49,7 +49,7 @@ local function heights()
     for _, title in ipairs(titles) do
         pick()
         tapButton("Categories")
-        tapButton(title)
+        H.tapSheet(title)
         table.insert(out, H.top().dimen.h)
         for _ = 1, 50 do
             if onLastPage() then break end
@@ -90,7 +90,7 @@ end)
 test("image icons show KOReader's own set", function()
     pick()
     tapButton("Categories")
-    tapButton("Image icons")
+    H.tapSheet("Image icons")
     assert(H.top().title:find("^Image icons"), H.top().title)
     assert(firstGlyph().icon, "image button")
     H.shot("icons_images")
@@ -102,7 +102,7 @@ end)
 test("long-press shows the glyph's name", function()
     pick()
     tapButton("Categories")
-    tapButton(require("minimenu/icons/index").CATEGORIES[1].title)
+    H.tapSheet(require("minimenu/icons/index").CATEGORIES[1].title)
     local b = firstGlyph()
     local name
     for _, e in ipairs(require("minimenu/icons/index").all()) do

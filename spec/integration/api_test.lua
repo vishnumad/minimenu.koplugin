@@ -141,9 +141,7 @@ test("pickMenu shows MiniMenu's chooser and returns the id", function()
         got = id
     end)
     H.drain()
-    local dlg = H.UIManager._window_stack[#H.UIManager._window_stack].widget
-    dlg.buttons[2][1].callback()
-    H.drain()
+    H.tapSheet("Beta")
     eq(b.id, got)
 end)
 

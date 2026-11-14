@@ -315,7 +315,7 @@ test("EPUB: reader items shown, PDF-only hidden", function()
     H.shot("kinds_quick_epub")
 end)
 
-test("a greyed-out reader entry stays visible (dimmed) as the first row", function()
+test("a grayed-out reader entry stays visible (dimmed) as the first row", function()
     local reader = require("apps/reader/readerui").instance
     local back = Store.createMenu("Back first")
     Store.editItems(back.id, function(items)
