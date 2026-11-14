@@ -296,7 +296,13 @@ function Popup:runRow(k, index, part)
     if not fresh or not fresh.available or fresh.disabled or type(fresh.run) ~= "function" then return end
     local run_ctx = self:runContext(k)
     if fresh.keep_open then
+        -- UIManager:sendEvent (used by most Dispatcher actions) stops at the
+        -- top widget, which is us, unless a widget below is always-active.
+        local ui = self.ctx.ui
+        local was_active = ui and ui.is_always_active
+        if ui then ui.is_always_active = true end
         local ok, err = pcall(fresh.run, run_ctx)
+        if ui then ui.is_always_active = was_active end
         if not ok then logger.err("MiniMenu: action failed:", err) end
         if not self.closed and not run_ctx.host.refreshed then self:refreshLevel(k) end
         return
