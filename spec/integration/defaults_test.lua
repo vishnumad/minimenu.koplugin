@@ -112,22 +112,4 @@ test("deleting every menu does not bring the default back", function()
     eq(0, #Store.menus())
 end)
 
-test("New menu… starts from the default items", function()
-    local Dialogs = require("minimenu/ui/dialogs")
-    local input = Dialogs.input
-    ---@diagnostic disable-next-line: duplicate-set-field
-    Dialogs.input = function(_args, callback)
-        callback("  Mine ")
-    end
-    local created
-    require("minimenu/ui/editor").newMenu(function(menu)
-        created = menu
-    end)
-    Dialogs.input = input
-    eq("Mine", created.title)
-    local first_install = require("minimenu/defaults").items()
-    eq(#first_install, #created.items)
-    eq({}, unknown(created.items))
-end)
-
 H.finish()

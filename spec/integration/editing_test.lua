@@ -901,6 +901,23 @@ test("editor lists items with markers and drills into folders", function()
     H.drain()
 end)
 
+test("New menu… creates an empty menu", function()
+    local Dialogs = require("minimenu/ui/dialogs")
+    local input = Dialogs.input
+    ---@diagnostic disable-next-line: duplicate-set-field
+    Dialogs.input = function(_args, callback)
+        callback("  Mine ")
+    end
+    local created
+    require("minimenu/ui/editor").newMenu(function(menu)
+        created = menu
+    end)
+    Dialogs.input = input
+    eq("Mine", created.title)
+    eq({}, created.items)
+    Store.deleteMenu(created.id)
+end)
+
 test("main menu entry is registered under Tools", function()
     local filemanager = require("apps/filemanager/filemanager").instance
     local Live = require("minimenu/menupath/live")

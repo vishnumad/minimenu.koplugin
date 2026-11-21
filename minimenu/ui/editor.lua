@@ -141,7 +141,7 @@ function Editor.newMenu(on_created)
     Dialogs.input({ title = _("New menu"), hint = _("Menu name"), ok_text = _("Create") }, function(text)
         text = Util.trim(text)
         if text == "" then return end
-        local menu = Store.createMenu(text, require("minimenu/defaults").items())
+        local menu = Store.createMenu(text)
         if on_created then on_created(menu) end
     end)
 end

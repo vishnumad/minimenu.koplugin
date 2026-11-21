@@ -1,6 +1,6 @@
 --[[--
-The default menu: seeded on first install and used as the starting items of
-every "New menu…". Only actions this device supports are included.
+The default menu, seeded on first install. Only actions this device supports
+are included.
 ]]
 
 local Index = require("minimenu/icons/index")
