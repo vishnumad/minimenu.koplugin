@@ -39,12 +39,13 @@ function Dialogs.input(args, callback)
     return dialog
 end
 
-function Dialogs.confirm(text, ok_text, callback)
+function Dialogs.confirm(text, ok_text, callback, on_cancel)
     local ConfirmBox = require("ui/widget/confirmbox")
     UIManager:show(ConfirmBox:new {
         text = text,
         ok_text = ok_text,
         ok_callback = callback,
+        cancel_callback = on_cancel,
     })
 end
 

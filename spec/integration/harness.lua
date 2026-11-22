@@ -159,6 +159,16 @@ function H.top()
     return H.UIManager:getTopmostVisibleWidget() or H.UIManager._window_stack[#H.UIManager._window_stack].widget
 end
 
+function H.menuEntry(tm, text)
+    local texts = {}
+    for _, it in ipairs(tm.item_table) do
+        local t = it.text or (it.text_func and it.text_func())
+        if t == text then return it end
+        table.insert(texts, t)
+    end
+    error("no menu entry " .. text .. " in " .. table.concat(texts, ", "))
+end
+
 function H.button(widget, text)
     local bt = widget.buttontable or widget.button_table
     for _, line in ipairs(bt.buttons_layout) do

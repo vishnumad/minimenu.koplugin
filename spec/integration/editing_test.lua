@@ -98,11 +98,13 @@ test("Icon shows the picked glyph; Default removes it", function()
 end)
 
 local ran = {}
+local pick_ctx_data
 require("minimenu/kinds/init").register({
     name = "probe",
     title = "Probe",
     action = true,
-    pick = function(_ctx, done)
+    pick = function(ctx, done)
+        pick_ctx_data = ctx.data
         done({ name = "side" })
     end,
     resolve = function(item)
@@ -190,6 +192,50 @@ test("Runs replaces the main action, keeping the label and second action", funct
     eq("side", changed.data.name)
     eq("Mine", changed.label)
     eq("side", changed.secondary.data.name)
+    Store.deleteMenu(m.id)
+end)
+
+test("a new second action's picker starts blank; the main one's starts with the current action", function()
+    local item = { id = Store.issueItemId(), kind = "probe", data = { name = "main" } }
+    local m = menuWith("Current", item)
+    ItemSheet.show(m.id, item.id)
+    H.drain()
+    H.tapSheet("Add second action…")
+    H.tapSheet("Probe")
+    eq(nil, pick_ctx_data)
+    H.tapSheet("main_runs")
+    H.tapSheet("Probe")
+    eq({ name = "main" }, pick_ctx_data)
+    Store.deleteMenu(m.id)
+end)
+
+local function uncheckGeneralAndClose(title)
+    local tm = H.top()[1]
+    tm:onMenuSelect(H.menuEntry(tm, "General"))
+    tm:onMenuSelect(H.menuEntry(tm, title))
+    tm:closeMenu()
+    H.drain()
+end
+
+test("unchecking every KOReader action empties the main action and removes the second", function()
+    local item = act("history")
+    item.secondary = { kind = "dispatcher", data = { action = { favorites = true } } }
+    local m = menuWith("Clear", item)
+    API.open(m.id)
+    H.drain()
+    holdRow(1)
+    H.tapSheet("main_runs")
+    H.tapSheet("KOReader action")
+    uncheckGeneralAndClose("History")
+    eq("none", Store.menu(m.id).items[1].kind)
+    assert(sheetHas("Add main action…"), "the sheet offers a new main action")
+    eq({ "(No action)" }, H.rowLabels(1))
+    H.tapSheet("second_runs")
+    H.tapSheet("KOReader action")
+    uncheckGeneralAndClose("Favorites")
+    eq(nil, Store.menu(m.id).items[1].secondary)
+    assert(sheetHas("Add second action…"), "the sheet offers a new second action")
+    H.shot("no_main_action")
     Store.deleteMenu(m.id)
 end)
 
@@ -325,14 +371,8 @@ local function entryTexts(tm)
 end
 
 local function choose(tm, text)
-    for _, it in ipairs(tm.item_table) do
-        if (it.text or it.text_func()) == text then
-            tm:onMenuSelect(it)
-            H.drain()
-            return
-        end
-    end
-    error("no entry " .. text .. " in " .. table.concat(entryTexts(tm), ", "))
+    tm:onMenuSelect(H.menuEntry(tm, text))
+    H.drain()
 end
 
 local function openSettings(title)

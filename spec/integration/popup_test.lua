@@ -83,8 +83,11 @@ test("open is idempotent and tap outside closes", function()
     assert(not API.isOpen(), "no popup should be current")
 end)
 
-test("running a leaf closes the popup, then runs on nextTick", function()
-    local ran = false
+test("running a leaf closes the popup and repaints the screen before running", function()
+    local function pixel(x, y)
+        return H.Screen.bb:getPixel(x, y):getColor8().a
+    end
+    local x, y, seen
     local Kinds = require("minimenu/kinds/init")
     Kinds.register({
         name = "probe",
@@ -92,8 +95,7 @@ test("running a leaf closes the popup, then runs on nextTick", function()
             return {
                 label = "Probe",
                 run = function()
-                    assert(not API.isOpen(), "popup must be closed before running")
-                    ran = true
+                    seen = { open = API.isOpen(), edge = pixel(x, y) }
                 end,
             }
         end,
@@ -105,8 +107,12 @@ test("running a leaf closes the popup, then runs on nextTick", function()
     end)
     API.open(m.id)
     H.drain()
+    local r = H.popup().chain[1].panel:rect()
+    x, y = r.x, r.y + math.floor(r.h / 2)
+    eq(0, pixel(x, y), "the popup's border")
     H.tap(H.rowCenter(1, 1))
-    assert(ran, "probe did not run")
+    -- A screenshot action reads the framebuffer: it must not see the popup.
+    eq({ open = false, edge = pixel(x, y) }, seen)
     Store.deleteMenu(m.id)
 end)
 

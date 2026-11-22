@@ -99,17 +99,28 @@ function DispatchUtil.available(action)
     return true
 end
 
+--- Does the table mix actions only for reflowable books with ones only for
+-- fixed-layout books? No book can run them all.
+function DispatchUtil.mixesLayouts(action)
+    local list = DispatchUtil.settingsList()
+    if not list then return false end
+    local rolling, paging = false, false
+    for _, name in ipairs(DispatchUtil.actionNames(action)) do
+        local spec = list[name] or {}
+        rolling = rolling or spec.rolling == true
+        paging = paging or spec.paging == true
+    end
+    return rolling and paging
+end
+
 function DispatchUtil.label(action)
     local Dispatcher = DispatchUtil.dispatcher()
-    local names = DispatchUtil.actionNames(action)
-    if #names == 1 then
-        local ok, title = pcall(Dispatcher.getNameFromItem, Dispatcher, names[1], action)
-        if ok and title then return title end
-        return names[1]
+    local titles = {}
+    for _, name in ipairs(DispatchUtil.actionNames(action)) do
+        local ok, title = pcall(Dispatcher.getNameFromItem, Dispatcher, name, action)
+        table.insert(titles, ok and title or name)
     end
-    local ok, text = pcall(Dispatcher.menuTextFunc, Dispatcher, action)
-    if ok and text then return text end
-    return table.concat(names, ", ")
+    return table.concat(titles, ", ")
 end
 
 return DispatchUtil

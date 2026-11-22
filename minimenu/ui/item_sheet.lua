@@ -43,6 +43,14 @@ function ItemSheet.show(menu_id, item_id, ctx)
     menu_id = menu.id
     local itemBuild, moveBuild
 
+    local function editAction(secondary)
+        if secondary then
+            ItemEdits.pickSecondary(menu_id, item_id, ctx)
+        else
+            ItemEdits.changeAction(menu_id, item_id, ctx)
+        end
+    end
+
     local function actionSection(target, secondary)
         local info = Resolve.inspect({ id = item_id, kind = target.kind, data = target.data }, ctx, Kinds.get)
         local key = secondary and "second" or "main"
@@ -56,11 +64,7 @@ function ItemSheet.show(menu_id, item_id, ctx)
                 label = _("Runs"),
                 value = actionName(target.kind, info),
                 run = function()
-                    if secondary then
-                        ItemEdits.pickSecondary(menu_id, item_id, ctx)
-                    else
-                        ItemEdits.changeAction(menu_id, item_id, ctx)
-                    end
+                    editAction(secondary)
                 end,
             },
         }
@@ -119,14 +123,14 @@ function ItemSheet.show(menu_id, item_id, ctx)
         }
     end
 
-    local function addSecondary()
+    local function addAction(secondary)
         return {
-            { section = true, label = _("Second action") },
+            { section = true, label = secondary and _("Second action") or _("Main action") },
             {
-                id = "second_add",
-                label = _("Add second action…"),
+                id = secondary and "second_add" or "main_add",
+                label = secondary and _("Add second action…") or _("Add main action…"),
                 run = function()
-                    ItemEdits.pickSecondary(menu_id, item_id, ctx)
+                    editAction(secondary)
                 end,
             },
         }
@@ -210,8 +214,12 @@ function ItemSheet.show(menu_id, item_id, ctx)
         local provider = Kinds.get(item.kind)
         local plain = info.separator or info.orphan
         local rows = itemSection(item, info, plain)
-        if provider and provider.action then append(rows, actionSection(item, false)) end
-        if not plain then append(rows, item.secondary and actionSection(item.secondary, true) or addSecondary()) end
+        if item.kind == "none" then
+            append(rows, addAction(false))
+        elseif provider and provider.action then
+            append(rows, actionSection(item, false))
+        end
+        if not plain then append(rows, item.secondary and actionSection(item.secondary, true) or addAction(true)) end
         append(rows, commands(item))
         local args = { title = _("Edit item"), rows = rows }
         if not info.separator then

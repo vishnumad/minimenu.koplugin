@@ -18,13 +18,6 @@ local fakeDispatcher = {
     getNameFromItem = function(_, name)
         return list[name] and list[name].title or "Unknown item"
     end,
-    menuTextFunc = function(_, action)
-        local n = 0
-        for k in pairs(action) do
-            if k ~= "settings" then n = n + 1 end
-        end
-        return n .. " actions"
-    end,
     execute = function(_, action)
         table.insert(executed, action)
     end,
@@ -148,10 +141,10 @@ describe("kinds resolve", function()
         it("multi-action items", function()
             local r = row(
                 "dispatcher",
-                { action = { history = true, toc = true, settings = { order = { "history", "toc" } } } },
+                { action = { history = true, toc = true, settings = { order = { "toc", "history" } } } },
                 contexts.reader
             )
-            assert.equal("2 actions", r.label)
+            assert.equal("Table of contents, History", r.label)
             assert.is_true(r.available)
             r = row("dispatcher", { action = { history = true, toc = true } }, contexts.fm)
             assert.is_false(r.available)

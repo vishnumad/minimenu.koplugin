@@ -2,10 +2,13 @@
 Item kind registry. A kind is a provider table:
     { name, title, order, pick, validate, resolve, action }
 Only `name` and `resolve` are required; kinds without `pick` can't be added
-from the UI. `action = true` marks kinds that do something when tapped:
-their resolve gives a `run`, or `children` for a menu that opens beside the
-row. They can be a row's second action (`item.secondary = { kind, data,
-icon }`), and an item's action can be changed to any of them.
+from the UI. `pick(ctx, done)` gets `ctx.data`, the current data when an
+item's action of this kind is being changed; `done(false)` then clears that
+action, and `done(nil)` cancels. `action = true` marks kinds that do
+something when tapped: their resolve gives a `run`, or `children` for a menu
+that opens beside the row. They can be a row's second action
+(`item.secondary = { kind, data, icon }`), and an item's action can be
+changed to any of them.
 ]]
 
 local logger = require("logger")
@@ -52,7 +55,7 @@ end
 
 function Kinds.registerBuiltins()
     if Kinds.builtins_registered then return end
-    for _, name in ipairs({ "separator", "dispatcher", "menu_item", "plugin", "folder", "menu_link" }) do
+    for _, name in ipairs({ "separator", "dispatcher", "menu_item", "plugin", "folder", "menu_link", "none" }) do
         Kinds.register(require("minimenu/kinds/" .. name))
     end
     Kinds.builtins_registered = true

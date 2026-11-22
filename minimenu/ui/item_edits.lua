@@ -71,8 +71,14 @@ function ItemEdits.changeIcon(menu_id, item_id, secondary)
     end)
 end
 
-local function pickAction(title, menu_id, item_id, ctx, apply)
-    require("minimenu/ui/pickers/kinds").pickAction(title, { menu_id = menu_id, ctx = ctx }, function(kind, data)
+--- `secondary` picks the second action instead of the main one.
+local function pickAction(title, menu_id, item_id, ctx, secondary, apply)
+    local _menu, item = Store.findItem(item_id, menu_id)
+    if not item then return end
+    local current = item
+    if secondary then current = item.secondary end
+    local target = { menu_id = menu_id, ctx = ctx, current = current }
+    require("minimenu/ui/pickers/kinds").pickAction(title, target, function(kind, data)
         update(menu_id, item_id, function(it)
             apply(it, kind, data)
         end)
@@ -81,14 +87,22 @@ end
 
 --- Replaces the item's action, keeping its label, icon and second action.
 function ItemEdits.changeAction(menu_id, item_id, ctx)
-    pickAction(_("Main action"), menu_id, item_id, ctx, function(it, kind, data)
-        it.kind, it.data = kind, data
+    pickAction(_("Main action"), menu_id, item_id, ctx, false, function(it, kind, data)
+        if data then
+            it.kind, it.data = kind, data
+        else
+            it.kind, it.data = "none", {}
+        end
     end)
 end
 
 --- Sets the second action, keeping its icon and whether it keeps the menu open.
 function ItemEdits.pickSecondary(menu_id, item_id, ctx)
-    pickAction(_("Second action"), menu_id, item_id, ctx, function(it, kind, data)
+    pickAction(_("Second action"), menu_id, item_id, ctx, true, function(it, kind, data)
+        if not data then
+            it.secondary = nil
+            return
+        end
         local old = it.secondary or {}
         it.secondary = { kind = kind, data = data, icon = old.icon, keep_open = old.keep_open }
     end)

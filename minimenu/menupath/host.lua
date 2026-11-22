@@ -15,7 +15,6 @@ local Host = {}
 opts:
     icon          tab icon (default "appbar.menu")
     on_close      called after the host closed
-    on_update     called with the TouchMenu after each updateItems
 Returns the TouchMenu
 ]]
 function Host.show(items, opts)
@@ -40,14 +39,6 @@ function Host.show(items, opts)
     menu.close_callback = function()
         UIManager:close(container)
         if opts.on_close then opts.on_close() end
-    end
-    if opts.on_update then
-        local orig = menu.updateItems
-        menu.updateItems = function(self, ...)
-            local r = orig(self, ...)
-            opts.on_update(self)
-            return r
-        end
     end
     container[1] = menu
     UIManager:show(container)

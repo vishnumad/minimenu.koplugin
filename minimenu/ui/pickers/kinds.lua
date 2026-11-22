@@ -19,6 +19,7 @@ target:
     folder_id   folder to add into (nil = top level)
     after_id    insert right after this item instead
     ctx         popup or editor context
+    current     the { kind, data } being replaced, if any
 ]]
 function KindPicker.add(target)
     chooseKind(_("Add item"), nil, function(provider)
@@ -26,7 +27,8 @@ function KindPicker.add(target)
     end)
 end
 
---- Choose and pick an action kind. callback(kind, data); `target` as for add.
+--- Choose and pick an action kind. callback(kind, data), with data false when
+-- `target.current` was cleared; `target` as for add.
 function KindPicker.pickAction(title, target, callback)
     chooseKind(title, function(p)
         return p.action
@@ -37,23 +39,26 @@ function KindPicker.pickAction(title, target, callback)
     end)
 end
 
-local function contextFor(target)
+local function contextFor(target, provider)
     local Context = require("minimenu/context")
     local ctx = target.ctx or Context.current()
+    local current = target.current
     return {
         ui = ctx.ui,
         name = ctx.name,
         menu_id = target.menu_id,
+        data = current and current.kind == provider.name and current.data or nil,
     }
 end
 
---- Runs the provider's pick. on_data(data, label, icon, opts) once, unless canceled.
+--- Runs the provider's pick. on_data(data, label, icon, opts) once, unless
+-- canceled; `data` is false when the action being changed was cleared.
 function KindPicker.pick(provider, target, on_data)
     local finished = false
-    local ok, err = pcall(provider.pick, contextFor(target), function(data, label, icon, opts)
+    local ok, err = pcall(provider.pick, contextFor(target, provider), function(data, label, icon, opts)
         if finished then return end
         finished = true
-        if data then on_data(data, label, icon, opts) end
+        if data ~= nil then on_data(data, label, icon, opts) end
     end)
     if not ok then
         require("logger").err("MiniMenu: picking", provider.name, "failed:", err)
@@ -79,6 +84,7 @@ function KindPicker.runPick(provider, target)
         end)
     end
     KindPicker.pick(provider, target, function(data, label, icon, opts)
+        if not data then return end
         local item = { id = Store.issueItemId(), kind = provider.name, data = data }
         if label and label ~= "" then item.label = label end
         if icon and icon ~= "" then item.icon = icon end

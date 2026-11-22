@@ -115,7 +115,8 @@ function Resolve.rows(items, ctx, kinds, opts)
     local rows = {}
     for _, item in ipairs(items or {}) do
         local row = Resolve.item(item, ctx, kinds)
-        if row and (row.separator or row.available or not opts.hide_unavailable) then
+        local runnable = row and (row.available or (row.secondary and row.secondary.available))
+        if row and (row.separator or runnable or not opts.hide_unavailable) then
             settle(row, opts)
             table.insert(rows, row)
         end

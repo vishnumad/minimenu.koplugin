@@ -273,27 +273,105 @@ test("capture picker drills lazily and captures a leaf with its path", function(
     eq("filemanager", got.captured_in)
 end)
 
-test("dispatcher picker returns the first single selection", function()
+test("dispatcher picker stays open for several actions, in the order checked", function()
     local DP = require("minimenu/ui/pickers/dispatcher")
     local got
     local tm = DP.pick({}, function(action)
         got = action or false
     end)
     H.drain()
-    -- General section, then "History"
-    local general = tm.item_table[1]
-    tm:onMenuSelect(general)
+    tm:onMenuSelect(H.menuEntry(tm, "General"))
     H.drain()
-    local hist
-    for _, it in ipairs(tm.item_table) do
-        if it.text == "History" then hist = it end
-    end
-    assert(hist, "History in General")
-    tm:onMenuSelect(hist)
+    tm:onMenuSelect(H.menuEntry(tm, "Favorites"))
+    tm:onMenuSelect(H.menuEntry(tm, "History"))
     H.drain()
+    eq(nil, got, "still open")
+    tm:backToUpperMenu()
+    H.shot("kinds_dispatcher_picker")
+    eq(true, H.menuEntry(tm, "Arrange actions").enabled_func(), "two actions can be arranged")
+    tm:onMenuSelect(H.menuEntry(tm, "Done"))
     H.drain()
     assert(got, "picked")
+    eq(true, got.favorites)
     eq(true, got.history)
+    eq({ "favorites", "history" }, got.settings.order)
+end)
+
+test("dispatcher picker starts with the current actions checked; unchecking them all clears", function()
+    local DP = require("minimenu/ui/pickers/dispatcher")
+    local current = { action = { history = true } }
+    local got = "open"
+    local tm = DP.pick({ data = current }, function(action)
+        got = action
+    end)
+    H.drain()
+    tm:onMenuSelect(H.menuEntry(tm, "General"))
+    H.drain()
+    eq(true, H.menuEntry(tm, "History").checked_func())
+    tm:onMenuSelect(H.menuEntry(tm, "History"))
+    eq({ history = true }, current.action, "stored action untouched")
+    tm:closeMenu()
+    H.drain()
+    eq(false, got, "cleared")
+end)
+
+test("dispatcher picker closed with nothing checked from the start cancels", function()
+    local got = "open"
+    local tm = require("minimenu/ui/pickers/dispatcher").pick({}, function(action)
+        got = action
+    end)
+    H.drain()
+    tm:closeMenu()
+    H.drain()
+    eq(nil, got)
+end)
+
+local REFLOWABLE = "Reflowable documents (epub, fb2, txt…)"
+local FIXED_LAYOUT = "Fixed layout documents (pdf, djvu, pics…)"
+
+local function toggle(tm, section, title)
+    tm:onMenuSelect(H.menuEntry(tm, section))
+    tm:onMenuSelect(H.menuEntry(tm, title))
+    tm:backToUpperMenu()
+end
+
+test("dispatcher picker reopens with the same actions when no book can run them together", function()
+    local got
+    local tm = require("minimenu/ui/pickers/dispatcher").pick({}, function(action)
+        got = action
+    end)
+    H.drain()
+    toggle(tm, REFLOWABLE, "Toggle hanging punctuation")
+    toggle(tm, FIXED_LAYOUT, "Toggle page flipping")
+    tm:closeMenu()
+    H.drain()
+    local box = H.top()
+    assert(box.ok_callback, "asks to change the actions")
+    eq(nil, got)
+    H.shot("kinds_dispatcher_mixed_layouts")
+    box.ok_callback()
+    H.UIManager:close(box)
+    H.drain()
+    tm = H.top()[1]
+    toggle(tm, FIXED_LAYOUT, "Toggle page flipping")
+    tm:closeMenu()
+    H.drain()
+    eq(true, got.toggle_hanging_punctuation)
+    eq(nil, got.toggle_page_flipping)
+end)
+
+test("dispatcher picker canceled on actions no book can run together keeps the current ones", function()
+    local got = "open"
+    local current = { toggle_hanging_punctuation = true, toggle_page_flipping = true }
+    local tm = require("minimenu/ui/pickers/dispatcher").pick({ data = { action = current } }, function(action)
+        got = action
+    end)
+    H.drain()
+    tm:closeMenu()
+    H.drain()
+    H.top():onClose()
+    H.drain()
+    eq(nil, got)
 end)
 
 -- Reader contexts ------------------------------------------------------------

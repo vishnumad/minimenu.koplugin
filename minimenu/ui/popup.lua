@@ -286,8 +286,9 @@ function Popup:runContext(k)
     return { ui = self.ctx.ui, menu_id = self.menu_id, host = host }
 end
 
---- Closes the popup before running, so actions that replace the view (opening
--- a book, exiting) never see it. keep_open actions run in place instead.
+--- Closes the popup and repaints before running, so actions that replace the
+-- view (opening a book, exiting) never see it and screenshots don't include it.
+-- keep_open actions run in place instead.
 function Popup:runRow(k, index, part)
     local row = self.chain[k].panel.rows[index]
     if not row or not row.item then return end
@@ -308,7 +309,7 @@ function Popup:runRow(k, index, part)
         return
     end
     self:close()
-    UIManager:nextTick(function()
+    UIManager:tickAfterNext(function()
         local ok, err = pcall(fresh.run, run_ctx)
         if not ok then logger.err("MiniMenu: action failed:", err) end
     end)
