@@ -56,6 +56,7 @@ function Metrics.get(setting)
         -- The second action's tap target: wider than the icon, even without padding.
         side_col = icon_size + 2 * gap,
         shadow = shadow,
+        min_width = setting("min_width") / 100,
         margin = math.max(Screen:scaleBySize(setting("edge_margin")), shadow),
         offset = Screen:scaleBySize(12),
         face = face,
@@ -72,8 +73,8 @@ function Metrics.defaults()
 end
 
 --- Panel width limits on a screen `screen_w` pixels wide.
-function Metrics.widthBounds(screen_w)
-    return { min_w = math.floor(screen_w * 0.3), max_w = math.floor(screen_w * 0.8) }
+function Metrics.widthBounds(screen_w, cfg)
+    return { min_w = math.floor(screen_w * cfg.min_width), max_w = math.floor(screen_w * 0.8) }
 end
 
 return Metrics

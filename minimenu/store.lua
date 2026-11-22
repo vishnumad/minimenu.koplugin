@@ -34,6 +34,7 @@ Store.DEFAULT_SETTINGS = {
     icon_scale = 100,
     edge_margin = 10,
     padding = 14,
+    min_width = 30,
     row_spacing = 2.2,
     radius = 5,
     shadow = true,

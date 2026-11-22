@@ -125,7 +125,7 @@ function Sheet:layout()
     if not args then return false end
     local old = self.panel
     local focused = old and self.focus and old.rows[self.focus]
-    local bounds = Metrics.widthBounds(self.screen.w)
+    local bounds = Metrics.widthBounds(self.screen.w, self.cfg)
     self.panel = Panel.new {
         rows = args.rows,
         cfg = self.cfg,

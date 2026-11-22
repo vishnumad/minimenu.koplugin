@@ -348,6 +348,14 @@ local function appearanceItems()
             max = 40,
             help_text = _("Space at the left and right of each row."),
         }),
+        spinItem("min_width", _("Minimum width"), {
+            min = 10,
+            max = 80,
+            step = 5,
+            hold_step = 10,
+            unit = "%",
+            help_text = _("Narrowest a menu can be, relative to the screen width. Wider items still widen it."),
+        }),
         spinItem("edge_margin", _("Screen edge spacing"), {
             min = 0,
             max = 60,

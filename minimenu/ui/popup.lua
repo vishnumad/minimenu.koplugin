@@ -112,7 +112,7 @@ function Popup:buildLevel(k, page)
     local entry = self.chain[k] or {}
     self.chain[k] = entry
     local old = entry.panel
-    local bounds = Metrics.widthBounds(self.screen.w)
+    local bounds = Metrics.widthBounds(self.screen.w, self.cfg)
     entry.panel = Panel.new {
         rows = self:resolveRows(self:levelItems(k)),
         cfg = self.cfg,
@@ -191,7 +191,7 @@ function Popup:placeLevel(k)
         direction = self.direction,
         overlap = cfg.border,
         indent = cfg.icon_col,
-        min_w = Metrics.widthBounds(self.screen.w).min_w,
+        min_w = Metrics.widthBounds(self.screen.w, cfg).min_w,
         avoid = avoid,
     }
     local _, h = self:measureLevel(k)

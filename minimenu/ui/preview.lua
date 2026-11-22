@@ -59,7 +59,7 @@ end
 function Preview:build()
     local cfg = Metrics.get()
     local screen = { w = Screen:getWidth(), h = Screen:getHeight() }
-    local bounds = Metrics.widthBounds(screen.w)
+    local bounds = Metrics.widthBounds(screen.w, cfg)
     self.panel = Panel.new {
         rows = rows(),
         cfg = cfg,
