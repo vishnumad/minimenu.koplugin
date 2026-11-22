@@ -309,7 +309,7 @@ function Panel.actionable(row)
         end
         return false
     end
-    return Resolve.actionable(row)
+    return Resolve.actionable(row) or Resolve.actionable(row.secondary)
 end
 
 --- Next actionable row after `from` in direction `step`, across pages, wrapping.

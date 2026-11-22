@@ -300,6 +300,23 @@ test("D-pad: Right steps onto the second action, Press runs it", function()
     Store.deleteMenu(m.id)
 end)
 
+test("D-pad: a row whose main action can't run here focuses its second action", function()
+    ran = {}
+    local item = act("toc")
+    item.secondary = { kind = "probe", data = { name = "side" } }
+    local m = menuWith("Second only", item)
+    API.open(m.id)
+    H.drain()
+    local p = assert(H.popup())
+    H.key("Down")
+    eq("secondary", p.chain[1].focus_part)
+    H.key("Left")
+    eq("secondary", p.chain[1].focus_part)
+    H.key("Press")
+    eq({ "side" }, ran)
+    Store.deleteMenu(m.id)
+end)
+
 test("a second action that links to a menu opens it beside the row", function()
     ran = {}
     local target = menuWith("Linked", act("history"), act("favorites"))

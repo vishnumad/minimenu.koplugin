@@ -253,8 +253,14 @@ local function partOf(row, part)
 end
 
 local function actionablePart(row, part)
-    if part == "secondary" then return row.secondary ~= nil and not row.secondary.dim end
-    return Panel.actionable(row)
+    if part == "secondary" then return Resolve.actionable(row.secondary) end
+    return Resolve.actionable(row)
+end
+
+--- `part` when it can run, else the row's other part.
+local function focusablePart(row, part)
+    if actionablePart(row, part or "row") then return part end
+    return part == "secondary" and "row" or "secondary"
 end
 
 function Popup:openFlyout(k, index, part)
@@ -544,6 +550,7 @@ function Popup:ensureFocus()
         entry.focus = entry.panel:nextActionable((page and page.first or 1) - 1, 1)
         entry.focus_part = nil
     end
+    if entry.focus then entry.focus_part = focusablePart(rows[entry.focus], entry.focus_part) end
     return entry.focus
 end
 
@@ -554,12 +561,8 @@ function Popup:moveFocus(step)
     self.focus_visible = true
     local before = self:chainRect(k)
     entry.focus_part = nil
-    if not had or not entry.focus then
-        self:ensureFocus()
-    else
-        local nxt = panel:nextActionable(entry.focus, step)
-        if nxt then entry.focus = nxt end
-    end
+    if had and entry.focus then entry.focus = panel:nextActionable(entry.focus, step) or entry.focus end
+    self:ensureFocus()
     if entry.focus then
         local page = panel:pageOf(entry.focus)
         if page and page ~= panel.page then panel:showPage(page) end
@@ -580,8 +583,8 @@ function Popup:pressFocused(open_only)
     local k, entry = self:deepest()
     if not self.focus_visible or not entry.focus then return self:moveFocus(1) end
     local row = entry.panel.rows[entry.focus]
-    if not Panel.actionable(row) then return true end
-    local part = entry.focus_part == "secondary" and row.secondary and "secondary" or "row"
+    local part = entry.focus_part == "secondary" and "secondary" or "row"
+    if not actionablePart(row, part) then return true end
     if partOf(row, part).children then
         if entry.open_index ~= entry.focus or entry.open_part ~= part then
             local child = self:openFlyout(k, entry.focus, part)
@@ -619,8 +622,9 @@ function Popup:focusSideways(side)
     local _, entry = self:deepest()
     if self.focus_visible and entry.focus then
         local on_secondary = entry.focus_part == "secondary"
-        local onto = side == "right" and not on_secondary and actionablePart(entry.panel.rows[entry.focus], "secondary")
-        local off = side == "left" and on_secondary
+        local row = entry.panel.rows[entry.focus]
+        local onto = side == "right" and not on_secondary and actionablePart(row, "secondary")
+        local off = side == "left" and on_secondary and actionablePart(row, "row")
         if onto or off then
             entry.focus_part = onto and "secondary" or "row"
             self:dirty(entry.panel:dirtyRect())

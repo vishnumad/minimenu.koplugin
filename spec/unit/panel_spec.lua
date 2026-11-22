@@ -157,6 +157,14 @@ describe("panel", function()
         assert.equal(4, panel:nextActionable(2, -1))
     end)
 
+    it("focuses a dimmed row only when its second action can run", function()
+        local list = { { label = "a", dim = true }, { label = "b", dim = true, secondary = { icon = "x" } } }
+        local panel = Panel.new { rows = list, cfg = cfg }
+        assert.equal(2, panel:nextActionable(0, 1))
+        list[2].secondary.dim = true
+        assert.is_nil(panel:nextActionable(0, 1))
+    end)
+
     it("ignores the header for width", function()
         local panel = Panel.new { rows = rows(2), cfg = cfg }
         local w = panel:measure(1000)
