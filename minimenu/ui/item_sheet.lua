@@ -187,13 +187,7 @@ function ItemSheet.show(menu_id, item_id, ctx)
                         end,
                     },
                     {
-                        label = _("Duplicate"),
-                        run = function()
-                            ItemEdits.duplicate(menu_id, item_id)
-                        end,
-                    },
-                    {
-                        label = _("Delete"),
+                        label = _("Delete…"),
                         run = function()
                             ItemEdits.delete(menu_id, item_id)
                         end,
@@ -302,6 +296,7 @@ function ItemSheet.show(menu_id, item_id, ctx)
         build = itemBuild,
         -- Any change can show here: a linked menu's name, the appearance of the preview.
         watch = true,
+        min_width = 0.6,
     }
 end
 

@@ -130,31 +130,15 @@ end
 function ItemEdits.delete(menu_id, item_id)
     local m, item = Store.findItem(item_id, menu_id)
     if not m then return end
-    local function doit()
-        Store.editItems(m.id, function(items)
-            return model.remove(items, item_id) ~= nil
-        end)
-    end
     local count = 0
     model.walk(model.children(item), function()
         count = count + 1
     end)
-    if count > 0 then
-        local Dialogs = require("minimenu/ui/dialogs")
-        Dialogs.confirm(T(_("Delete this folder and the %1 items in it?"), count), _("Delete"), doit)
-    else
-        doit()
-    end
-end
-
-function ItemEdits.duplicate(menu_id, item_id)
-    local m = Store.findItem(item_id, menu_id)
-    if not m then return end
-    Store.editItems(m.id, function(items)
-        local item, list, index = model.find(items, item_id)
-        if not item then return false end
-        table.insert(list, index + 1, model.cloneItem(item, Store.issueItemId))
-        return true
+    local text = count > 0 and T(_("Delete this folder and the %1 items in it?"), count) or _("Delete this item?")
+    require("minimenu/ui/dialogs").confirm(text, _("Delete"), function()
+        Store.editItems(m.id, function(items)
+            return model.remove(items, item_id) ~= nil
+        end)
     end)
 end
 

@@ -501,6 +501,13 @@ local function top()
     return H.UIManager._window_stack[#H.UIManager._window_stack].widget
 end
 
+local function confirm()
+    local box = top()
+    box.ok_callback()
+    H.UIManager:close(box)
+    H.drain()
+end
+
 local inner = folder("Inner", { act("screenshot"), act("full_refresh") })
 local tools = folder("Tools", { act("night_mode"), inner, act("toggle_wifi") })
 local m = Store.createMenu("Edit me")
@@ -511,6 +518,12 @@ Store.editItems(m.id, function(items)
     table.insert(items, act("collections"))
     return true
 end)
+
+local function removeItem(id)
+    Store.editItems(m.id, function(items)
+        return model.remove(items, id) ~= nil
+    end)
+end
 
 test("long-press on a root row opens the item sheet", function()
     API.open(m.id)
@@ -530,7 +543,7 @@ test("long-press on a root row opens the item sheet", function()
         "# Second action",
         "Add second action…",
         "--",
-        "Add… | Move… | Duplicate | Delete",
+        "Add… | Move… | Delete…",
     }, H.sheetLabels())
     H.shot("editing_item_sheet")
     H.key("Back")
@@ -559,14 +572,24 @@ test("a separator or an orphan sheet has only Show in", function()
     H.drain()
     eq("Edit item", H.sheet().panel.title)
     eq(nil, H.sheet().panel.title_row, "no preview of a separator")
-    eq({ "Show in: Reader and File browser", "--", "Add… | Move… | Duplicate | Delete" }, H.sheetLabels())
+    eq({ "Show in: Reader and File browser", "--", "Add… | Move… | Delete…" }, H.sheetLabels())
     H.sheet():close()
     ItemSheet.show(o.id, orphan.id)
     H.drain()
     eq("Gone", H.sheet().panel.title_row.label)
     eq("Needs plugin: gone_plugin · kept until you delete it", H.sheet().panel.subtitle)
-    eq({ "Show in: Reader and File browser", "--", "Add… | Move… | Duplicate | Delete" }, H.sheetLabels())
+    eq({ "Show in: Reader and File browser", "--", "Add… | Move… | Delete…" }, H.sheetLabels())
     H.shot("editing_orphan_sheet")
+    Store.deleteMenu(o.id)
+end)
+
+test("the item sheet keeps a minimum width, whatever its labels", function()
+    local sep = { id = Store.issueItemId(), kind = "separator", data = {} }
+    local o = menuWith("Narrow", sep)
+    ItemSheet.show(o.id, sep.id)
+    H.drain()
+    eq(math.floor(require("device").screen:getWidth() * 0.6), H.sheet().panel.w)
+    H.sheet():close()
     Store.deleteMenu(o.id)
 end)
 
@@ -578,9 +601,7 @@ test("the item sheet closes when its item is deleted elsewhere", function()
     end)
     assert(ItemSheet.show(m.id, extra.id))
     H.drain()
-    Store.editItems(m.id, function(items)
-        return model.remove(items, extra.id) ~= nil
-    end)
+    removeItem(extra.id)
     H.drain()
     eq(nil, H.sheet())
 end)
@@ -638,7 +659,7 @@ test("move mode closes when its item is deleted", function()
     H.drain()
     H.tapCell("Move…")
     eq("Move item", sheet.panel.title)
-    ItemEdits.delete(m.id, extra.id)
+    removeItem(extra.id)
     H.drain()
     eq(nil, H.sheet())
 end)
@@ -670,7 +691,8 @@ test("editing from a flyout keeps the chain open and re-renders", function()
     eq(3, #p.chain)
     -- long-press "Screenshot" in the deepest flyout, then delete it
     H.hold(H.rowCenter(3, 1))
-    H.tapCell("Delete")
+    H.tapCell("Delete…")
+    confirm()
     eq(nil, H.sheet(), "the sheet closes with its item")
     eq(3, #p.chain, "chain still open")
     eq({ "Full screen refresh" }, H.rowLabels(3))
@@ -738,23 +760,18 @@ test("Move to… offers other folders, not the item's own subtree, and moves the
     Store.deleteMenu(mv.id)
 end)
 
-test("duplicate gives fresh ids, deep", function()
-    local before = #Store.menu(m.id).items
-    ItemEdits.duplicate(m.id, tools.id)
-    local items = Store.menu(m.id).items
-    eq(before + 1, #items)
-    local _, list, idx = model.find(items, tools.id)
-    local copy = list[idx + 1]
-    assert(copy.id ~= tools.id)
-    assert(copy.data.items[1].id ~= tools.data.items[1].id)
-    ItemEdits.delete(m.id, copy.id) -- folder with children asks first
+test("deleting an item asks first", function()
+    local extra = act("history")
+    Store.editItems(m.id, function(items)
+        table.insert(items, extra)
+        return true
+    end)
+    ItemEdits.delete(m.id, extra.id)
     H.drain()
-    local box = top()
-    assert(box.ok_callback, "confirm box for non-empty folder")
-    box.ok_callback()
-    H.UIManager:close(box)
-    H.drain()
-    eq(before, #Store.menu(m.id).items)
+    eq("Delete this item?", top().text)
+    assert(model.find(Store.menu(m.id).items, extra.id), "not deleted before confirming")
+    confirm()
+    eq(nil, model.find(Store.menu(m.id).items, extra.id))
 end)
 
 test("deleting a folder counts the items in its subfolders too", function()
@@ -765,11 +782,8 @@ test("deleting a folder counts the items in its subfolders too", function()
     end)
     ItemEdits.delete(m.id, outer.id)
     H.drain()
-    local box = top()
-    eq("Delete this folder and the 4 items in it?", box.text)
-    box.ok_callback()
-    H.UIManager:close(box)
-    H.drain()
+    eq("Delete this folder and the 4 items in it?", top().text)
+    confirm()
     eq(nil, model.find(Store.menu(m.id).items, outer.id))
 end)
 

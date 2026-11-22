@@ -23,6 +23,7 @@ local Sheet = InputContainer:extend {
     name = "MiniMenuSheet",
     build = nil, -- returns { title, rows, title_row?, subtitle? }, or nil to close
     watch = false, -- whether Store events rebuild
+    min_width = 0, -- a fraction of the screen width
     on_close = nil,
     -- Lightens the screen below. It freezes while the sheet is open: only for modal sheets.
     backdrop = false,
@@ -133,7 +134,7 @@ function Sheet:layout()
         title_row = args.title_row,
         title_cfg = args.title_row and Metrics.get(),
         subtitle = args.subtitle,
-        min_w = math.max(bounds.min_w, old and old.w or 0),
+        min_w = math.max(bounds.min_w, math.floor(self.screen.w * self.min_width), old and old.w or 0),
         max_w = bounds.max_w,
         page = old and old.page,
     }
