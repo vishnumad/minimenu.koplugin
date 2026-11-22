@@ -85,7 +85,6 @@ local function pickAction(title, menu_id, item_id, ctx, secondary, apply)
     end)
 end
 
---- Replaces the item's action, keeping its label, icon and second action.
 function ItemEdits.changeAction(menu_id, item_id, ctx)
     pickAction(_("Main action"), menu_id, item_id, ctx, false, function(it, kind, data)
         if data then
@@ -96,7 +95,6 @@ function ItemEdits.changeAction(menu_id, item_id, ctx)
     end)
 end
 
---- Sets the second action, keeping its icon and whether it keeps the menu open.
 function ItemEdits.pickSecondary(menu_id, item_id, ctx)
     pickAction(_("Second action"), menu_id, item_id, ctx, true, function(it, kind, data)
         if not data then

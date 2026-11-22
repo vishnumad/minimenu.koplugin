@@ -311,8 +311,12 @@ end
 -- Returns menu, item, list, index, ancestors
 function Store.findItem(item_id, menu_id)
     local menus = Store.menus()
-    local preferred = Store.menu(menu_id)
-    if preferred then table.insert(menus, 1, preferred) end
+    for i, menu in ipairs(menus) do
+        if menu.id == menu_id then
+            table.insert(menus, 1, table.remove(menus, i))
+            break
+        end
+    end
     for _, menu in ipairs(menus) do
         local item, list, index, ancestors = model.find(menu.items, item_id)
         if item then return menu, item, list, index, ancestors end

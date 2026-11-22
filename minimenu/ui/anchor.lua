@@ -224,16 +224,10 @@ function Anchor.flyoutX(args)
     end
 end
 
---- Align the top with `top` (the opening row), shifting up until the bottom
--- fits and capping the height to the screen.
--- Returns y, h
+--- Align the top with `top` (the opening row), shifting up until the bottom fits.
 function Anchor.flyoutY(top, h, screen, margin)
     margin = margin or 0
-    h = min(h, screen.h - 2 * margin)
-    local y = top
-    if y + h > screen.h - margin then y = screen.h - margin - h end
-    if y < margin then y = margin end
-    return y, h
+    return clamp(top, margin, screen.h - margin - h)
 end
 
 return Anchor

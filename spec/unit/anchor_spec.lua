@@ -133,11 +133,9 @@ describe("anchor", function()
         assert.is_true(x + w <= parent.x + parent.w - 30 + 0.5 or w < 180)
     end)
 
-    it("shifts a flyout up to fit and caps its height", function()
-        local y, h = Anchor.flyoutY(700, 300, screen, 10)
-        assert.same({ 490, 300 }, { y, h })
-        y, h = Anchor.flyoutY(100, 2000, screen, 10)
-        assert.same({ 10, 780 }, { y, h })
+    it("shifts a flyout up to fit", function()
+        assert.equal(100, Anchor.flyoutY(100, 300, screen, 10))
+        assert.equal(490, Anchor.flyoutY(700, 300, screen, 10))
     end)
 
     -- An 8-level cascade of wide panels: every panel stays on screen and
@@ -167,8 +165,8 @@ describe("anchor", function()
                     indent = indent,
                     min_w = min_w,
                 }
-                local y, h = Anchor.flyoutY(row.y, row_h * 8, screen, margin)
-                local r = { x = x, y = y, w = w, h = h }
+                local h = row_h * 8
+                local r = { x = x, y = Anchor.flyoutY(row.y, h, screen, margin), w = w, h = h }
                 assert(inside(r, screen, margin), "level " .. level)
                 assert.is_true(r.w >= min_w)
                 if mode == "stacked" then

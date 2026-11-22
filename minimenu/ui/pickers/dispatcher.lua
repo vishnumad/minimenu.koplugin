@@ -15,8 +15,9 @@ local MIXED_LAYOUTS = _(
 )
 
 --- The rows to show from an addSubMenu table: the sections after its leading
--- "Nothing" row, up to max_per_page, then "Arrange actions", the first row of
--- the tail. The rest of the tail sets how a gesture runs the actions.
+-- "Nothing" row, then "Arrange actions", which addSubMenu adds right after
+-- setting max_per_page. The rest of the tail sets how a gesture runs the
+-- actions.
 local function rows(menu)
     local out = {}
     local last = menu.max_per_page or #menu
