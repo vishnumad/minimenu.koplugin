@@ -24,8 +24,12 @@ local Sheet = InputContainer:extend {
     build = nil, -- returns { title, rows, title_row?, subtitle? }, or nil to close
     watch = false, -- whether Store events rebuild
     on_close = nil,
+    -- Lightens the screen below. It freezes while the sheet is open: only for modal sheets.
+    backdrop = false,
     stop_events_propagation = true,
 }
+
+local BACKDROP_LIGHTEN = 0.6
 
 local function toGeom(r)
     return Geom:new { x = r.x, y = r.y, w = r.w, h = r.h }
@@ -85,6 +89,7 @@ function Sheet.choose(args)
         on_close = function()
             if not chosen and args.on_cancel then args.on_cancel() end
         end,
+        backdrop = true,
     }
 end
 
@@ -157,14 +162,26 @@ function Sheet:setBuild(build)
 end
 
 function Sheet:showRect()
-    return toGeom(self.panel:dirtyRect())
+    return self.backdrop and self.dimen or toGeom(self.panel:dirtyRect())
 end
 
 function Sheet:dirty()
-    UIManager:setDirty(self, "ui", self:showRect())
+    UIManager:setDirty(self, "ui", toGeom(self.panel:dirtyRect()))
+end
+
+-- Snapshot on the first paint, once pending repaints below have run. Painting
+-- from the snapshot keeps the lightening from compounding.
+function Sheet:paintBackdrop(bb)
+    if not self.snapshot then
+        self.snapshot = bb:copy()
+        self.snapshot:lightenRect(0, 0, bb:getWidth(), bb:getHeight(), BACKDROP_LIGHTEN)
+        self.covers_fullscreen = true
+    end
+    bb:blitFrom(self.snapshot, 0, 0, 0, 0, bb:getWidth(), bb:getHeight())
 end
 
 function Sheet:paintTo(bb)
+    if self.backdrop then self:paintBackdrop(bb) end
     self.panel:paintTo(bb, {
         focus_index = self.focus_visible and self.focus or nil,
         focus_part = self.focus_cell and "cell" or nil,
@@ -201,6 +218,10 @@ Sheet.onSetRotationMode = Sheet.onSetDimensions
 function Sheet:onCloseWidget()
     self.closed = true
     self.panel:free()
+    if self.snapshot then
+        self.snapshot:free()
+        self.snapshot = nil
+    end
     if self.unsubscribe then
         self.unsubscribe()
         self.unsubscribe = nil

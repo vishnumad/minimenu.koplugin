@@ -140,4 +140,47 @@ test("a rebuild keeps the left, top and width; only the bottom moves", function(
     Store.deleteMenu(m.id)
 end)
 
+-- The darkest pixel in the file browser's title bar, above any centered sheet.
+local function darkTitlePixel()
+    local bb, best = H.Screen.bb, nil
+    for y = 0, 60, 2 do
+        for x = 0, bb:getWidth() - 1, 2 do
+            local v = bb:getPixel(x, y):getColor8().a
+            if not best or v < best.v then best = { x = x, y = y, v = v } end
+        end
+    end
+    return best
+end
+
+local function pixelAt(p)
+    return H.Screen.bb:getPixel(p.x, p.y):getColor8().a
+end
+
+test("a chooser lightens the screen below once and restores it on close", function()
+    local p = darkTitlePixel()
+    Sheet.choose { title = "Pick", choices = { { text = "A", value = 1 } }, on_choice = function() end }
+    H.drain()
+    local lightened = pixelAt(p)
+    assert(lightened > p.v, "lightened")
+    H.sheet():dirty()
+    H.drain()
+    eq(lightened, pixelAt(p), "repaints don't compound")
+    H.sheet():close()
+    H.drain()
+    eq(p.v, pixelAt(p), "restored")
+end)
+
+test("a plain sheet leaves the screen below as is", function()
+    local p = darkTitlePixel()
+    Sheet.show {
+        build = function()
+            return { title = "Plain", rows = { { label = "Row" } } }
+        end,
+    }
+    H.drain()
+    eq(p.v, pixelAt(p))
+    H.sheet():close()
+    H.drain()
+end)
+
 H.finish()
