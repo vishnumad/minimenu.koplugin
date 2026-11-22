@@ -4,6 +4,7 @@ local _ = require("gettext")
 
 return {
     name = "none",
+    title = _("No action"),
 
     resolve = function()
         return { label = _("No action"), disabled = true }

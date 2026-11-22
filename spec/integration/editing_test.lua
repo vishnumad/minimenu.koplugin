@@ -239,6 +239,15 @@ test("unchecking every KOReader action empties the main action and removes the s
     Store.deleteMenu(m.id)
 end)
 
+test("the editor shows an item without a main action as No action, dimmed", function()
+    local m = menuWith("Cleared", { id = Store.issueItemId(), kind = "none", data = {} })
+    local ctx = require("minimenu/context").current()
+    local row = require("minimenu/ui/editor").itemRows(m.id, nil, ctx, {})[1]
+    eq("No action", row.mandatory)
+    eq(true, row.dim)
+    Store.deleteMenu(m.id)
+end)
+
 test("Keep menu open runs the action in place", function()
     ran = {}
     local m = menuWith("Keep", { id = Store.issueItemId(), kind = "probe", data = { name = "main" } })

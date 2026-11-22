@@ -416,7 +416,7 @@ function Editor.itemRows(menu_id, folder_id, ctx, nav)
         table.insert(rows, {
             text = text,
             mandatory = mandatory,
-            dim = marker ~= nil,
+            dim = marker ~= nil or item.kind == "none",
             callback = function()
                 if is_folder then
                     nav.enter(id)
